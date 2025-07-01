@@ -1,3 +1,7 @@
+#   Name: Kayden Ye
+#   Date: 30/06/2025
+#   File: classes/algorithm.py
+
 import sqlite3
 
 class Algorithm:
@@ -41,6 +45,10 @@ class Algorithm:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        # Check if algorithm with the same name already exists
+        cursor.execute("SELECT id FROM algorithms WHERE name = ?", (self.name,))
+        existing = cursor.fetchone()
+
         # Insert algorithm
         cursor.execute("""
             INSERT INTO algorithms (name, notation) VALUES (?, ?)
@@ -63,6 +71,23 @@ class Algorithm:
 
         conn.commit()
         conn.close()
+
+    @classmethod
+    def clear_all_algorithms(cls):
+        conn = sqlite3.connect(cls.db_path)
+        cursor = conn.cursor()
+
+        # Delete from linking table first to avoid foreign key constraint errors
+        cursor.execute("DELETE FROM algorithm_tags")
+        cursor.execute("DELETE FROM algorithms")
+        cursor.execute("DELETE FROM tags")
+        # Optional: Uncomment below to also clear all unused tags
+        # cursor.execute("DELETE FROM tags")
+
+        conn.commit()
+        conn.close()
+        print("All algorithms (and links) deleted.")
+
 
     @classmethod
     def load_from_db(cls, name):

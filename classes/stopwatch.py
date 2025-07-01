@@ -1,3 +1,7 @@
+#   Name: Kayden Ye
+#   Date: 30/06/2025
+#   File: classes/algorithm.py
+
 class Stopwatch:
     def __init__(self, 
                  time: float, 
