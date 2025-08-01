@@ -88,7 +88,6 @@ class Algorithm:
         conn.close()
         print("All algorithms (and links) deleted.")
 
-
     @classmethod
     def load_from_db(cls, name):
         conn = sqlite3.connect(cls.db_path)
