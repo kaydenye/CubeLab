@@ -31,6 +31,16 @@ class AlgorithmUI:
         self._elapsed_ms = 0
         self._last_perf = None
         self._after_job = None
+        self.stopwatch_target_var = ctk.StringVar(value="No algorithm selected")
+        self.stopwatch_time_var = ctk.StringVar(value="0.000")
+        self.stopwatch_state_var = ctk.StringVar(value="Ready")
+        
+        # Stopwatch timing variables (from poop.py)
+        self.running = False
+        self.start_time = 0
+        self.elapsed = 0
+        self.hold_start = None
+        self.ready = False
 
         self.draw_main_ui()
 
@@ -125,8 +135,38 @@ class AlgorithmUI:
         self.tags_frame = ctk.CTkFrame(self.details_frame, fg_color="transparent")
         self.tags_frame.pack(pady=5)
 
+        # Stopwatch section
+        stopwatch_container = ctk.CTkFrame(self.details_frame, fg_color="#2A2D32", corner_radius=15)
+        stopwatch_container.pack(pady=(20, 10), padx=20, fill="x")
+
+        # Stopwatch title
+        stopwatch_title = ctk.CTkLabel(stopwatch_container, text="Stopwatch", font=(FONT, 24, "bold"))
+        stopwatch_title.pack(pady=(15, 5))
+
+        # Algorithm target
+        self.stopwatch_target_label = ctk.CTkLabel(stopwatch_container, textvariable=self.stopwatch_target_var, font=(FONT, 16), text_color="gray")
+        self.stopwatch_target_label.pack(pady=5)
+
+        # Timer display
+        self.stopwatch_time_label = ctk.CTkLabel(stopwatch_container, textvariable=self.stopwatch_time_var, font=(FONT, 48, "bold"), text_color="white")
+        self.stopwatch_time_label.pack(pady=10)
+
+        # State display
+        self.stopwatch_state_label = ctk.CTkLabel(stopwatch_container, textvariable=self.stopwatch_state_var, font=(FONT, 14), text_color="gray")
+        self.stopwatch_state_label.pack(pady=(0, 15))
+
+        # Instructions
+        instructions = ctk.CTkLabel(stopwatch_container, text="Hold SPACE for 0.5s to start • Press SPACE to stop", font=(FONT, 12), text_color="gray")
+        instructions.pack(pady=(0, 15))
+
         self.feedback_label = ctk.CTkLabel(self.details_frame, textvariable=self.feedback_var)
         self.feedback_label.pack(pady=10)
+
+        # Enable keyboard controls
+        self.enable_stopwatch_keys(True)
+
+        # Start the display update loop
+        self.update_stopwatch_display()
 
         # Load initial data
         self.load_algorithm_list()
@@ -327,6 +367,8 @@ class AlgorithmUI:
             ctk.CTkLabel(self.tags_frame, text="—", text_color="gray").pack(anchor="center")
 
         self.selected_algorithm = name
+        self.stopwatch_target_var.set(f"Timing: {name}")
+        self.reset_timer()  # Reset timer when switching algorithms
 
     def remove_algorithm(self, name: str):
         try:
@@ -844,6 +886,140 @@ class AlgorithmUI:
                 return [r[0] for r in cur.fetchall()]
         except Exception:
             return []
+
+    def enable_stopwatch_keys(self, enabled: bool):
+        """Enable or disable stopwatch keyboard controls."""
+        if enabled:
+            # Bind to the toplevel window to capture all key events
+            toplevel = self.parent_frame.winfo_toplevel()
+            toplevel.bind("<KeyPress-space>", self.on_space_press)
+            toplevel.bind("<KeyRelease-space>", self.on_space_release)
+            toplevel.focus_set()
+        else:
+            # Unbind events
+            toplevel = self.parent_frame.winfo_toplevel()
+            toplevel.unbind("<KeyPress-space>")
+            toplevel.unbind("<KeyRelease-space>")
+
+    def on_space_press(self, event):
+        """Handle spacebar press for stopwatch control (from poop.py)"""
+        if self.hold_start is None:
+            self.hold_start = time.time()
+            if not self.running:
+                self.stopwatch_time_label.configure(text_color="red")
+                self.stopwatch_state_var.set("Hold to start...")
+            self.parent_frame.after(10, self.check_hold_duration)
+
+    def on_space_release(self, event):
+        """Handle spacebar release for stopwatch control (from poop.py)"""
+        if self.hold_start is None:
+            return
+
+        hold_duration = time.time() - self.hold_start
+
+        if self.ready:
+            if not self.running and self.elapsed == 0:
+                self.start_stopwatch()
+            elif not self.running and self.elapsed > 0:
+                self.reset_stopwatch()
+                self.start_stopwatch()
+        elif self.running and hold_duration < 0.5:
+            self.stop_stopwatch()
+
+        self.hold_start = None
+        self.ready = False
+
+    def check_hold_duration(self):
+        """Check how long spacebar has been held (from poop.py)"""
+        if self.hold_start is None:
+            return
+
+        held_time = time.time() - self.hold_start
+
+        if held_time >= 0.5:
+            self.ready = True
+            if not self.running:
+                self.stopwatch_time_label.configure(text_color="green")
+                self.stopwatch_state_var.set("Ready to start!")
+        else:
+            if not self.running:
+                self.stopwatch_time_label.configure(text_color="red")
+                self.stopwatch_state_var.set("Hold to start...")
+            self.parent_frame.after(10, self.check_hold_duration)
+
+    def start_stopwatch(self):
+        """Start the stopwatch timer (from poop.py)"""
+        if not self.selected_algorithm:
+            self.feedback_var.set("Please select an algorithm first!")
+            return
+            
+        self.running = True
+        self.start_time = time.time()
+        self.elapsed = 0
+        self.stopwatch_time_label.configure(text_color="white")
+        self.stopwatch_state_var.set("Running...")
+
+    def stop_stopwatch(self):
+        """Stop the stopwatch and save the time (from poop.py)"""
+        if not self.running:
+            return
+            
+        self.running = False
+        self.elapsed = time.time() - self.start_time
+        self.stopwatch_state_var.set(f"Stopped: {self.elapsed:.3f}s")
+        
+        # Save the time to database
+        self.save_time_to_db(self.elapsed)
+
+    def save_time_to_db(self, time_seconds: float):
+        """Save the stopwatch time to the database"""
+        if not self.selected_algorithm:
+            return
+            
+        try:
+            with sqlite3.connect(Algorithm.db_path) as conn:
+                cur = conn.cursor()
+                # Get algorithm ID
+                cur.execute("SELECT id FROM algorithms WHERE name = ?", (self.selected_algorithm,))
+                result = cur.fetchone()
+                if result:
+                    algorithm_id = result[0]
+                    # Insert the time
+                    cur.execute(
+                        "INSERT INTO times (algorithm_id, time_seconds) VALUES (?, ?)",
+                        (algorithm_id, time_seconds)
+                    )
+                    conn.commit()
+                    self.feedback_var.set(f"Time saved: {time_seconds:.3f}s")
+                else:
+                    self.feedback_var.set("Algorithm not found!")
+        except Exception as e:
+            self.feedback_var.set(f"Error saving time: {e}")
+
+    def update_stopwatch_display(self):
+        """Update the stopwatch display (from poop.py)"""
+        if self.running:
+            current = time.time() - self.start_time
+            self.stopwatch_time_var.set(f"{current:.3f}")
+        else:
+            self.stopwatch_time_var.set(f"{self.elapsed:.3f}")
+        
+        # Schedule next update
+        self.parent_frame.after(10, self.update_stopwatch_display)
+
+    def reset_timer(self):
+        """Reset the stopwatch timer."""
+        self.running = False
+        self.elapsed = 0
+        self.start_time = 0
+        self.hold_start = None
+        self.ready = False
+        self.stopwatch_time_var.set("0.000")
+        self.stopwatch_state_var.set("Ready")
+        self.stopwatch_time_label.configure(text_color="white")
+        if self._after_job:
+            self.parent_frame.after_cancel(self._after_job)
+            self._after_job = None
 
 def create_algorithm_ui(parent_frame: ctk.CTkFrame):
     """Factory function to create AlgorithmUI instance for backward compatibility"""

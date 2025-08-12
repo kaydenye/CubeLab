@@ -32,6 +32,17 @@ def init_db():
         )
     """)
 
+    # Create table for storing times
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS times (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            algorithm_id INTEGER,
+            time_seconds REAL NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (algorithm_id) REFERENCES algorithms(id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
