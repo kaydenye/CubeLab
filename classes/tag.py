@@ -1,6 +1,6 @@
 #   Name: Kayden Ye
 #   Date: 30/06/2025
-#   File: classes/algorithm.py
+#   File: classes/tag.py
 
 class Tag:
     def __init__(self, 

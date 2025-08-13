@@ -1,13 +1,7 @@
 import customtkinter as ctk
 import os
-from classes.algorithm import Algorithm
 from classes.tag import Tag
-from classes.stopwatch import Stopwatch
-from classes.user import User
-from classes.cube_model import CubeModel
-# from util.algorithm import load_algorithm_list
-from gui.algorithm import create_algorithm_ui
-# import sqlite3
+from gui.main_window import create_algorithm_ui
 import platform
 
 if platform.system() == "Windows":
