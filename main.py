@@ -1,6 +1,5 @@
 import customtkinter as ctk
 import os
-from classes.tag import Tag
 from gui.main_window import create_algorithm_ui
 import platform
 
@@ -16,11 +15,10 @@ icon_path = os.path.join(script_dir, "icon.ico")
 app.iconbitmap(icon_path)
 
 app.geometry("1920x1080")
-
 app.attributes("-fullscreen", True)
 
 main_frame = ctk.CTkFrame(app)
-main_frame.grid(row=0, column=0, sticky="nsew")  # Use grid instead of pack
+main_frame.grid(row=0, column=0, sticky="nsew")
 
 app.grid_rowconfigure(0, weight=1)
 app.grid_columnconfigure(0, weight=1)

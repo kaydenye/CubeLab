@@ -133,8 +133,29 @@ class MainWindow:
         )
     
     def exit_app(self):
-        """Exit the application"""
-        self.parent_frame.winfo_toplevel().destroy()
+        """Exit the application with proper cleanup"""
+        try:
+            # Clean up any matplotlib figures that might exist
+            import matplotlib.pyplot as plt
+            plt.close('all')
+            
+            # If we have a dashboard instance, clean it up
+            if hasattr(self, 'dashboard'):
+                try:
+                    if hasattr(self.dashboard, 'bar_chart_card') and hasattr(self.dashboard.bar_chart_card, 'canvas'):
+                        if self.dashboard.bar_chart_card.canvas:
+                            self.dashboard.bar_chart_card.canvas.get_tk_widget().destroy()
+                    if hasattr(self.dashboard, 'line_chart_card') and hasattr(self.dashboard.line_chart_card, 'canvas'):
+                        if self.dashboard.line_chart_card.canvas:
+                            self.dashboard.line_chart_card.canvas.get_tk_widget().destroy()
+                except:
+                    pass
+                    
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+        finally:
+            # Exit the application
+            self.parent_frame.winfo_toplevel().destroy()
 
 def create_algorithm_ui(parent_frame: ctk.CTkFrame):
     """Factory function for backward compatibility"""

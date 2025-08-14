@@ -19,6 +19,9 @@ class DashboardCard(ctk.CTkFrame):
     
     def __init__(self, parent, **kwargs):
         super().__init__(parent, fg_color="#33363D", corner_radius=15, **kwargs)
+        # Ensure the card doesn't expand beyond its set size
+        self.grid_propagate(False)
+        self.pack_propagate(False)
 
 class AlgorithmCard(DashboardCard):
     """Card displaying algorithm details with cube image"""
@@ -41,19 +44,15 @@ class AlgorithmCard(DashboardCard):
         # Cube image placeholder
         cube_frame = ctk.CTkFrame(self, fg_color="transparent")
         cube_frame.pack(expand=True)
-        
-        # Create a simple cube representation
-        cube_label = ctk.CTkLabel(cube_frame, text="🧩", font=("Arial", 80))
-        cube_label.pack()
-    
+
     def update_algorithm(self, algorithm_name: str):
         """Update card with algorithm data"""
         try:
-            # Get algorithm details
-            algorithm = self.algorithm_util.get_algorithm(algorithm_name)
-            if algorithm:
+            details = self.algorithm_util.get_algorithm_details(algorithm_name)
+            if details:
+                notation, tags = details
                 self.title_label.configure(text=algorithm_name)
-                self.notation_label.configure(text=algorithm.notation if hasattr(algorithm, 'notation') else "No notation available")
+                self.notation_label.configure(text=notation)
             else:
                 self.title_label.configure(text="Algorithm Not Found")
                 self.notation_label.configure(text="No notation available")
@@ -87,27 +86,32 @@ class TagsCard(DashboardCard):
         
         try:
             # Get algorithm details
-            algorithm = self.algorithm_util.get_algorithm(algorithm_name)
-            if algorithm and hasattr(algorithm, 'tags') and algorithm.tags:
-                row = 0
-                col = 0
-                for i, tag in enumerate(algorithm.tags):
-                    tag_btn = ctk.CTkButton(
-                        self.tags_frame, 
-                        text=tag, 
-                        width=max(80, len(tag) * 10),
-                        height=30,
-                        font=(FONT, 12)
-                    )
-                    tag_btn.grid(row=row, column=col, padx=5, pady=5, sticky="w")
-                    
-                    col += 1
-                    if col > 2:  # 3 columns max
-                        col = 0
-                        row += 1
+            details = self.algorithm_util.get_algorithm_details(algorithm_name)
+            if details:
+                notation, tags = details
+                if tags:
+                    row = 0
+                    col = 0
+                    for i, tag in enumerate(tags):
+                        tag_btn = ctk.CTkButton(
+                            self.tags_frame, 
+                            text=tag, 
+                            width=max(80, len(tag) * 10),
+                            height=30,
+                            font=(FONT, 12)
+                        )
+                        tag_btn.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+                        
+                        col += 1
+                        if col > 2:  # 3 columns max
+                            col = 0
+                            row += 1
+                else:
+                    no_tags_label = ctk.CTkLabel(self.tags_frame, text="No tags available", font=(FONT, 14), text_color="gray")
+                    no_tags_label.pack(expand=True)
             else:
-                no_tags_label = ctk.CTkLabel(self.tags_frame, text="No tags available", font=(FONT, 14), text_color="gray")
-                no_tags_label.pack(expand=True)
+                error_label = ctk.CTkLabel(self.tags_frame, text="Algorithm not found", font=(FONT, 14), text_color="gray")
+                error_label.pack(expand=True)
         except Exception as e:
             error_label = ctk.CTkLabel(self.tags_frame, text="Error loading tags", font=(FONT, 14), text_color="gray")
             error_label.pack(expand=True)
@@ -117,27 +121,46 @@ class BarChartCard(DashboardCard):
     
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
+        self.timer_util = TimerUtil()
+        self.canvas = None
         self.setup_ui()
     
     def setup_ui(self):
         """Setup bar chart card UI"""
+        self.create_chart([])
+    
+    def create_chart(self, times_data):
+        """Create or update the bar chart"""
+        # Clear existing chart
+        for widget in self.winfo_children():
+            widget.destroy()
+        
+        # Close any existing matplotlib figures to prevent memory leaks
+        plt.close('all')
+        
         # Create matplotlib figure
-        fig, ax = plt.subplots(figsize=(4, 3), facecolor='#33363D')
+        fig, ax = plt.subplots(figsize=(3, 2.5), facecolor='#33363D')
         ax.set_facecolor('#33363D')
         
-        # Sample data
-        x_labels = ['1.0', '0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2']
-        values = [5, 15, 65, 35, 10, 8, 6, 4, 2]
+        if times_data:
+            # Create histogram of times
+            times = [float(t[0]) for t in times_data]
+            bins = 10
+            counts, bin_edges = np.histogram(times, bins=bins)
+            bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(bin_edges)-1)]
+            
+            # Create bars
+            bars = ax.bar(range(len(counts)), counts, color='#4A9EFF', width=0.8)
+            
+            # Customize chart
+            ax.set_xticks(range(len(bin_centers)))
+            ax.set_xticklabels([f'{x:.1f}' for x in bin_centers], color='gray', fontsize=8, rotation=45)
+            ax.set_ylabel('Count', color='gray', fontsize=8)
+        else:
+            # Show empty state
+            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes, 
+                   ha='center', va='center', color='gray', fontsize=12)
         
-        # Create bars
-        bars = ax.bar(range(len(values)), values, color='#4A9EFF', width=0.8)
-        
-        # Customize chart
-        ax.set_xticks(range(len(x_labels)))
-        ax.set_xticklabels(x_labels, color='gray', fontsize=8)
-        ax.set_ylim(0, 80)
-        ax.set_yticks(range(0, 81, 10))
-        ax.set_yticklabels([str(i) for i in range(0, 81, 10)], color='gray', fontsize=8)
         ax.tick_params(colors='gray')
         
         # Remove spines
@@ -149,16 +172,37 @@ class BarChartCard(DashboardCard):
         ax.set_axisbelow(True)
         
         # Embed in tkinter
-        canvas = FigureCanvasTkAgg(fig, self)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+        plt.tight_layout()
+        self.canvas = FigureCanvasTkAgg(fig, self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+    
+    def destroy(self):
+        """Clean up matplotlib resources"""
+        try:
+            if hasattr(self, 'canvas') and self.canvas:
+                self.canvas.get_tk_widget().destroy()
+                self.canvas = None
+            plt.close('all')
+        except:
+            pass
+        super().destroy()
+    
+    def update_algorithm(self, algorithm_name: str):
+        """Update chart with algorithm times"""
+        try:
+            times_data = self.timer_util.get_algorithm_times(algorithm_name)
+            self.create_chart(times_data)
+        except Exception as e:
+            self.create_chart([])
 
 class TimerListCard(DashboardCard):
     """Card displaying timer list"""
     
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, dashboard=None, **kwargs):
         super().__init__(parent, **kwargs)
         self.timer_util = TimerUtil()
+        self.dashboard = dashboard
         self.setup_ui()
     
     def setup_ui(self):
@@ -177,40 +221,99 @@ class TimerListCard(DashboardCard):
         for widget in self.scrollable.winfo_children():
             widget.destroy()
         
-        # Get times for the algorithm
-        times_data = self.timer_util.get_algorithm_times(algorithm_name)
+        # Get times for the algorithm with IDs and penalty flags
+        times_data = self.timer_util.get_algorithm_times_with_ids(algorithm_name)
         
         if not times_data:
             no_times_label = ctk.CTkLabel(self.scrollable, text="No times recorded yet", font=(FONT, 14), text_color="gray")
             no_times_label.pack(expand=True, pady=20)
             return
         
-        # Display latest 11 times (like in the original design)
-        latest_times = times_data[:11] if len(times_data) > 11 else times_data
+        total_times = len(times_data)
         
-        for i, (time_seconds, timestamp) in enumerate(latest_times):
+        for i, (time_id, time_seconds, timestamp, plus_two, dnf) in enumerate(times_data):
             row_frame = ctk.CTkFrame(self.scrollable, fg_color="transparent")
             row_frame.pack(fill="x", pady=1)
             
-            # Number
-            num_label = ctk.CTkLabel(row_frame, text=f"{i+1}.", font=(FONT, 12), width=30)
+            # Number (descending order)
+            solve_number = total_times - i
+            num_label = ctk.CTkLabel(row_frame, text=f"{solve_number}.", font=(FONT, 12), width=40)
             num_label.pack(side="left")
             
-            # Time
-            time_label = ctk.CTkLabel(row_frame, text=f"{time_seconds:.2f}", font=(FONT, 12, "bold"), width=50)
-            time_label.pack(side="left")
+            # Calculate display time (add 2 seconds if plus_two is True)
+            display_time = time_seconds + (2.0 if plus_two else 0.0)
             
-            # +2 button
-            plus2_btn = ctk.CTkButton(row_frame, text="+2", width=30, height=20, font=(FONT, 10))
+            # Time label with conditional formatting
+            if dnf:
+                time_text = "DNF"
+                time_color = "red"
+            else:
+                time_text = f"{display_time:.2f}" + (" (+2)" if plus_two else "")
+                time_color = "orange" if plus_two else "white"
+            
+            time_label = ctk.CTkLabel(row_frame, text=time_text, font=(FONT, 12, "bold"), 
+                                    width=80, text_color=time_color)
+            time_label.pack(side="left", padx=(5, 0))
+            
+            # +2 button (disabled if already applied or DNF)
+            plus2_state = "disabled" if plus_two or dnf else "normal"
+            plus2_color = "gray" if plus_two or dnf else None
+            plus2_btn = ctk.CTkButton(
+                row_frame, text="+2", width=30, height=20, font=(FONT, 10),
+                state=plus2_state, fg_color=plus2_color,
+                command=lambda tid=time_id, alg=algorithm_name: self.apply_plus_two(tid, alg),
+                hover=False  # Disable hover animation for faster response
+            )
             plus2_btn.pack(side="left", padx=2)
             
-            # DNF button  
-            dnf_btn = ctk.CTkButton(row_frame, text="DNF", width=30, height=20, font=(FONT, 10))
+            # DNF button (toggle)
+            dnf_color = "red" if dnf else None
+            dnf_btn = ctk.CTkButton(
+                row_frame, text="DNF", width=30, height=20, font=(FONT, 10),
+                fg_color=dnf_color,
+                command=lambda tid=time_id, alg=algorithm_name, is_dnf=dnf: self.toggle_dnf(tid, alg, is_dnf),
+                hover=False  # Disable hover animation for faster response
+            )
             dnf_btn.pack(side="left", padx=2)
             
-            # X button
-            x_btn = ctk.CTkButton(row_frame, text="✗", width=20, height=20, font=(FONT, 10))
+            # X button (delete)
+            x_btn = ctk.CTkButton(
+                row_frame, text="X", width=20, height=20, font=(FONT, 10),
+                fg_color="red", hover_color="darkred",
+                command=lambda tid=time_id, alg=algorithm_name: self.delete_time(tid, alg),
+                hover=False  # Disable hover animation for faster response
+            )
             x_btn.pack(side="right")
+    
+    def apply_plus_two(self, time_id: int, algorithm_name: str):
+        """Apply +2 penalty to a time"""
+        if self.timer_util.update_time_penalty(time_id, plus_two=True):
+            self.update_times(algorithm_name)  # Refresh the display
+            # Update other dashboard cards
+            if self.dashboard:
+                self.dashboard.on_algorithm_select(algorithm_name)
+    
+    def toggle_dnf(self, time_id: int, algorithm_name: str, current_dnf: bool):
+        """Toggle DNF status for a time"""
+        new_dnf = not current_dnf
+        # If setting DNF, remove +2 penalty
+        if new_dnf:
+            self.timer_util.update_time_penalty(time_id, plus_two=False, dnf=True)
+        else:
+            self.timer_util.update_time_penalty(time_id, dnf=False)
+        
+        self.update_times(algorithm_name)  # Refresh the display
+        # Update other dashboard cards
+        if self.dashboard:
+            self.dashboard.on_algorithm_select(algorithm_name)
+    
+    def delete_time(self, time_id: int, algorithm_name: str):
+        """Delete a time from the database"""
+        if self.timer_util.delete_time(time_id):
+            self.update_times(algorithm_name)  # Refresh the display
+            # Update other dashboard cards
+            if self.dashboard:
+                self.dashboard.on_algorithm_select(algorithm_name)
 
 class StatsCard(DashboardCard):
     """Card displaying statistics"""
@@ -248,27 +351,30 @@ class StatsCard(DashboardCard):
         times_only = [time for time, _ in times_data]
         stats = self.timer_util.get_time_statistics(times_data)
         
+        # Darker background color (10% darker than #33363D)
+        darker_bg = "#2D2F35"
+        
         # PB and AVG row
         top_row = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        top_row.pack(fill="x", pady=(0, 20))
+        top_row.pack(fill="x", pady=(0, 15))
         
         # PB section
-        pb_frame = ctk.CTkFrame(top_row, fg_color="transparent")
-        pb_frame.pack(side="left", expand=True)
+        pb_frame = ctk.CTkFrame(top_row, fg_color=darker_bg, corner_radius=8)
+        pb_frame.pack(side="left", expand=True, fill="both", padx=(0, 2))
         
         pb_label = ctk.CTkLabel(pb_frame, text="pb", font=(FONT, 14), text_color="gray")
-        pb_label.pack()
+        pb_label.pack(pady=(15, 0))
         pb_value = ctk.CTkLabel(pb_frame, text=f"{stats['best']:.2f}" if stats else "N/A", font=(FONT, 36, "bold"))
-        pb_value.pack()
+        pb_value.pack(pady=(0, 15))
         
-        # AVG section
-        avg_frame = ctk.CTkFrame(top_row, fg_color="transparent")
-        avg_frame.pack(side="right", expand=True)
+        # Average section
+        avg_frame = ctk.CTkFrame(top_row, fg_color=darker_bg, corner_radius=8)
+        avg_frame.pack(side="right", expand=True, fill="both", padx=(2, 0))
         
         avg_label = ctk.CTkLabel(avg_frame, text="avg", font=(FONT, 14), text_color="gray")
-        avg_label.pack()
+        avg_label.pack(pady=(15, 0))
         avg_value = ctk.CTkLabel(avg_frame, text=f"{stats['average']:.2f}" if stats else "N/A", font=(FONT, 36, "bold"))
-        avg_value.pack()
+        avg_value.pack(pady=(0, 15))
         
         # Calculate ao5 and ao12
         ao5_pb = self._calculate_best_average(times_only, 5)
@@ -278,47 +384,51 @@ class StatsCard(DashboardCard):
         
         # Bottom section
         bottom_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        bottom_frame.pack(fill="x")
+        bottom_frame.pack(fill="x", pady=(5, 0))
         
         # ao5 pb
-        ao5_pb_frame = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        ao5_pb_frame.pack(side="left", expand=True)
+        ao5_pb_frame = ctk.CTkFrame(bottom_frame, fg_color=darker_bg, corner_radius=8)
+        ao5_pb_frame.pack(side="left", expand=True, fill="both", padx=(0, 2))
         
         ao5_pb_label = ctk.CTkLabel(ao5_pb_frame, text="ao5 pb", font=(FONT, 12), text_color="gray")
-        ao5_pb_label.pack()
+        ao5_pb_label.pack(pady=(12, 0))
         ao5_pb_value = ctk.CTkLabel(ao5_pb_frame, text=f"{ao5_pb:.2f}" if ao5_pb else "N/A", font=(FONT, 20, "bold"))
-        ao5_pb_value.pack()
+        ao5_pb_value.pack(pady=(0, 12))
         
         # ao5
-        ao5_frame = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        ao5_frame.pack(side="right", expand=True)
+        ao5_frame = ctk.CTkFrame(bottom_frame, fg_color=darker_bg, corner_radius=8)
+        ao5_frame.pack(side="right", expand=True, fill="both", padx=(2, 0))
         
         ao5_label = ctk.CTkLabel(ao5_frame, text="ao5", font=(FONT, 12), text_color="gray")
-        ao5_label.pack()
+        ao5_label.pack(pady=(12, 0))
         ao5_value = ctk.CTkLabel(ao5_frame, text=f"{ao5_current:.2f}" if ao5_current else "N/A", font=(FONT, 20, "bold"))
-        ao5_value.pack()
+        ao5_value.pack(pady=(0, 12))
         
         # Spacer
-        spacer = ctk.CTkFrame(self.main_frame, fg_color="transparent", height=10)
+        spacer = ctk.CTkFrame(self.main_frame, fg_color="transparent", height=5)
         spacer.pack(fill="x")
         
+        # ao12 row
+        ao12_row = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        ao12_row.pack(fill="x")
+        
         # ao12 pb  
-        ao12_pb_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        ao12_pb_frame.pack(side="left", expand=True)
+        ao12_pb_frame = ctk.CTkFrame(ao12_row, fg_color=darker_bg, corner_radius=8)
+        ao12_pb_frame.pack(side="left", expand=True, fill="both", padx=(0, 2))
         
         ao12_pb_label = ctk.CTkLabel(ao12_pb_frame, text="ao12 pb", font=(FONT, 12), text_color="gray")
-        ao12_pb_label.pack()
+        ao12_pb_label.pack(pady=(12, 0))
         ao12_pb_value = ctk.CTkLabel(ao12_pb_frame, text=f"{ao12_pb:.2f}" if ao12_pb else "N/A", font=(FONT, 20, "bold"))
-        ao12_pb_value.pack()
+        ao12_pb_value.pack(pady=(0, 12))
         
         # ao12
-        ao12_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        ao12_frame.pack(side="right", expand=True)
+        ao12_frame = ctk.CTkFrame(ao12_row, fg_color=darker_bg, corner_radius=8)
+        ao12_frame.pack(side="right", expand=True, fill="both", padx=(2, 0))
         
         ao12_label = ctk.CTkLabel(ao12_frame, text="ao12", font=(FONT, 12), text_color="gray")
-        ao12_label.pack()
+        ao12_label.pack(pady=(12, 0))
         ao12_value = ctk.CTkLabel(ao12_frame, text=f"{ao12_current:.2f}" if ao12_current else "N/A", font=(FONT, 20, "bold"))
-        ao12_value.pack()
+        ao12_value.pack(pady=(0, 12))
     
     def _calculate_best_average(self, times, count):
         """Calculate best average of count"""
@@ -360,28 +470,48 @@ class LineChartCard(DashboardCard):
     
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
+        self.timer_util = TimerUtil()
+        self.canvas = None
         self.setup_ui()
     
     def setup_ui(self):
         """Setup line chart card UI"""
+        self.create_chart([])
+    
+    def create_chart(self, times_data):
+        """Create or update the line chart"""
+        # Clear existing chart
+        for widget in self.winfo_children():
+            widget.destroy()
+        
+        # Close any existing matplotlib figures to prevent memory leaks
+        plt.close('all')
+        
         # Create matplotlib figure
-        fig, ax = plt.subplots(figsize=(4, 3), facecolor='#33363D')
+        fig, ax = plt.subplots(figsize=(3, 2.5), facecolor='#33363D')
         ax.set_facecolor('#33363D')
         
-        # Sample data - declining trend
-        x = np.linspace(0, 10, 50)
-        y = 1.0 * np.exp(-x/3) + 0.2 + 0.05 * np.random.randn(50)
-        
-        # Create line chart
-        ax.plot(x, y, color='#4A9EFF', linewidth=2)
-        
-        # Customize chart
-        ax.set_ylim(0, 1.0)
-        ax.set_xlim(0, 10)
-        ax.set_yticks([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
-        ax.set_yticklabels(['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '1.0'], 
-                          color='gray', fontsize=8)
-        ax.tick_params(colors='gray')
+        if times_data and len(times_data) > 1:
+            # Get times in chronological order
+            times = [float(t[0]) for t in reversed(times_data)]  # Reverse to get chronological order
+            x = range(len(times))
+            
+            # Create line chart
+            ax.plot(x, times, color='#4A9EFF', linewidth=2, marker='o', markersize=3)
+            
+            # Customize chart
+            ax.set_ylabel('Time (s)', color='gray', fontsize=8)
+            ax.set_xlabel('Attempt', color='gray', fontsize=8)
+            ax.tick_params(colors='gray')
+            
+            # Set reasonable y-limits
+            min_time, max_time = min(times), max(times)
+            padding = (max_time - min_time) * 0.1
+            ax.set_ylim(max(0, min_time - padding), max_time + padding)
+        else:
+            # Show empty state
+            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes, 
+                   ha='center', va='center', color='gray', fontsize=12)
         
         # Remove spines
         for spine in ax.spines.values():
@@ -391,13 +521,30 @@ class LineChartCard(DashboardCard):
         ax.grid(True, alpha=0.3, color='gray')
         ax.set_axisbelow(True)
         
-        # Remove x-axis labels
-        ax.set_xticks([])
-        
         # Embed in tkinter
-        canvas = FigureCanvasTkAgg(fig, self)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+        plt.tight_layout()
+        self.canvas = FigureCanvasTkAgg(fig, self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+    
+    def destroy(self):
+        """Clean up matplotlib resources"""
+        try:
+            if hasattr(self, 'canvas') and self.canvas:
+                self.canvas.get_tk_widget().destroy()
+                self.canvas = None
+            plt.close('all')
+        except:
+            pass
+        super().destroy()
+    
+    def update_algorithm(self, algorithm_name: str):
+        """Update chart with algorithm times"""
+        try:
+            times_data = self.timer_util.get_algorithm_times(algorithm_name)
+            self.create_chart(times_data)
+        except Exception as e:
+            self.create_chart([])
 
 class Dashboard:
     """Dashboard component with card-based layout"""
@@ -427,42 +574,49 @@ class Dashboard:
         # Main content frame
         main_content = ctk.CTkFrame(self.parent_frame, fg_color="#222326")
         main_content.grid(row=1, column=0, sticky="nsew")
-        main_content.grid_columnconfigure(0, weight=1)  # dashboard cards
-        main_content.grid_columnconfigure(1, weight=0)  # algorithm list
-        main_content.grid_rowconfigure(0, weight=1)
+        main_content.grid_columnconfigure(0, weight=1)  # dashboard area
+        main_content.grid_columnconfigure(1, weight=0)  # algorithm list (fixed width)
+        main_content.grid_rowconfigure(0, weight=1)  # top half (empty space)
+        main_content.grid_rowconfigure(1, weight=1)  # bottom half (dashboard cards)
         
-        # Dashboard cards frame (left side)
+        # Empty top half for spacing
+        top_spacer = ctk.CTkFrame(main_content, fg_color="#222326")
+        top_spacer.grid(row=0, column=0, sticky="nsew")
+        
+        # Dashboard cards frame (bottom half of left side)
         self.content_frame = ctk.CTkFrame(main_content, fg_color="#222326")
-        self.content_frame.grid(row=0, column=0, sticky="nsew")
+        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
         
-        # Configure grid for 3x2 layout
+        # Configure grid for 3x2 layout - remove uniform to allow natural sizing
         for i in range(3):
             self.content_frame.grid_columnconfigure(i, weight=1)
         for i in range(2):
             self.content_frame.grid_rowconfigure(i, weight=1)
         
-        # Create cards
+        # Create cards with square aspect ratio (fixed size)
+        card_size = 400  # Increased square size for even bigger cards
+        
         # Top row
-        self.algorithm_card = AlgorithmCard(self.content_frame)
-        self.algorithm_card.grid(row=0, column=0, sticky="nsew", padx=(15, 7.5), pady=(15, 7.5))
+        self.algorithm_card = AlgorithmCard(self.content_frame, width=card_size, height=card_size)
+        self.algorithm_card.grid(row=0, column=0, padx=(15, 7.5), pady=(15, 7.5))
         
-        self.tags_card = TagsCard(self.content_frame)
-        self.tags_card.grid(row=0, column=1, sticky="nsew", padx=(7.5, 7.5), pady=(15, 7.5))
+        self.tags_card = TagsCard(self.content_frame, width=card_size, height=card_size)
+        self.tags_card.grid(row=0, column=1, padx=(7.5, 7.5), pady=(15, 7.5))
         
-        self.bar_chart_card = BarChartCard(self.content_frame)
-        self.bar_chart_card.grid(row=0, column=2, sticky="nsew", padx=(7.5, 7.5), pady=(15, 7.5))
+        self.bar_chart_card = BarChartCard(self.content_frame, width=card_size, height=card_size)
+        self.bar_chart_card.grid(row=0, column=2, padx=(7.5, 7.5), pady=(15, 7.5))
         
         # Bottom row
-        self.timer_list_card = TimerListCard(self.content_frame)
-        self.timer_list_card.grid(row=1, column=0, sticky="nsew", padx=(15, 7.5), pady=(7.5, 15))
+        self.timer_list_card = TimerListCard(self.content_frame, dashboard=self, width=card_size, height=card_size)
+        self.timer_list_card.grid(row=1, column=0, padx=(15, 7.5), pady=(7.5, 15))
         
-        self.stats_card = StatsCard(self.content_frame)
-        self.stats_card.grid(row=1, column=1, sticky="nsew", padx=(7.5, 7.5), pady=(7.5, 15))
+        self.stats_card = StatsCard(self.content_frame, width=card_size, height=card_size)
+        self.stats_card.grid(row=1, column=1, padx=(7.5, 7.5), pady=(7.5, 15))
         
-        self.line_chart_card = LineChartCard(self.content_frame)
-        self.line_chart_card.grid(row=1, column=2, sticky="nsew", padx=(7.5, 15), pady=(7.5, 15))
+        self.line_chart_card = LineChartCard(self.content_frame, width=card_size, height=card_size)
+        self.line_chart_card.grid(row=1, column=2, padx=(7.5, 7.5), pady=(7.5, 15))
         
-        # Algorithm list (right side)
+        # Algorithm list (right side) - spans both rows
         self.algorithm_list = AlgorithmList(
             main_content,
             on_algorithm_select=self.on_algorithm_select,
@@ -470,7 +624,7 @@ class Dashboard:
             show_add=False,     # Don't show add on dashboard
             show_count=True     # Show time counts
         )
-        self.algorithm_list.grid(row=0, column=1, sticky="nsew")
+        self.algorithm_list.grid(row=0, column=1, rowspan=2, sticky="nsew")
     
     def on_algorithm_select(self, algorithm_name: str):
         """Handle algorithm selection"""
@@ -479,8 +633,24 @@ class Dashboard:
         self.tags_card.update_tags(algorithm_name)
         self.timer_list_card.update_times(algorithm_name)
         self.stats_card.update_stats(algorithm_name)
-        # Bar chart and line chart updates can be added later if needed
+        self.bar_chart_card.update_algorithm(algorithm_name)
+        self.line_chart_card.update_algorithm(algorithm_name)
     
     def exit_app(self):
-        """Exit the application"""
-        self.parent_frame.winfo_toplevel().destroy()
+        """Properly exit the application with cleanup"""
+        try:
+            # Clean up matplotlib figures
+            import matplotlib.pyplot as plt
+            plt.close('all')
+            
+            # Clean up canvas references
+            if hasattr(self.bar_chart_card, 'canvas') and self.bar_chart_card.canvas:
+                self.bar_chart_card.canvas.get_tk_widget().destroy()
+            if hasattr(self.line_chart_card, 'canvas') and self.line_chart_card.canvas:
+                self.line_chart_card.canvas.get_tk_widget().destroy()
+                
+        except Exception as e:
+            print(f"Error during dashboard cleanup: {e}")
+        finally:
+            # Exit the application
+            self.parent_frame.winfo_toplevel().destroy()

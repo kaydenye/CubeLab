@@ -25,7 +25,6 @@ class StopwatchWidget(ctk.CTkFrame):
         # StringVars for display
         self.target_var = ctk.StringVar(value="No algorithm selected")
         self.time_var = ctk.StringVar(value="0.000")
-        self.state_var = ctk.StringVar(value="Ready")
         
         self.setup_ui()
         self.setup_key_bindings()
@@ -45,12 +44,8 @@ class StopwatchWidget(ctk.CTkFrame):
         self.time_label = ctk.CTkLabel(self, textvariable=self.time_var, font=(FONT, 48, "bold"), text_color="white")
         self.time_label.pack(pady=10)
         
-        # State display
-        self.state_label = ctk.CTkLabel(self, textvariable=self.state_var, font=(FONT, 14), text_color="gray")
-        self.state_label.pack(pady=(0, 15))
-        
         # Instructions
-        instructions = ctk.CTkLabel(self, text="Hold SPACE for 0.5s to start • Press SPACE to stop", font=(FONT, 12), text_color="gray")
+        instructions = ctk.CTkLabel(self, text="Hold spacebar for 0.5s to start, press spacebar to stop", font=(FONT, 12), text_color="gray")
         instructions.pack(pady=(0, 15))
     
     def setup_key_bindings(self):
@@ -100,28 +95,19 @@ class StopwatchWidget(ctk.CTkFrame):
     def _on_state_change(self, state: str):
         """Handle stopwatch state changes"""
         if state == "holding":
-            self.state_var.set("Hold...")
             self.time_label.configure(text_color="red")
         elif state == "ready":
             if self.stopwatch.ready:
-                self.state_var.set("Ready - Release to start!")
                 self.time_label.configure(text_color="green")
             else:
-                self.state_var.set("Ready")
                 self.time_label.configure(text_color="white")
         elif state == "running":
-            self.state_var.set("Running...")
             self.time_label.configure(text_color="white")
-        elif state == "stopped":
-            self.state_var.set("Stopped")
-            # Don't change color when stopping - keep it white
     
     def start_update_loop(self):
-        """Start the display update loop"""
         self._update_display()
     
     def _update_display(self):
-        """Update the time display"""
         current_time = self.stopwatch.get_time()
         self.time_var.set(f"{current_time:.3f}")
         
@@ -141,7 +127,6 @@ class StopwatchWidget(ctk.CTkFrame):
         
         self.stopwatch.reset()
         self.time_var.set("0.000")
-        self.state_var.set("Ready")
         self.time_label.configure(text_color="white")
         
         # Restart update loop

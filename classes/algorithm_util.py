@@ -6,14 +6,11 @@ import sqlite3
 from typing import List, Tuple, Optional
 from .algorithm import Algorithm
 
-class AlgorithmUtil:
-    """Service class to handle algorithm database operations"""
-    
+class AlgorithmUtil:    
     def __init__(self):
         self.db_path = Algorithm.db_path
     
     def get_algorithms_with_filters(self, search_query: str = "", filter_tags: set = None, sort_order: str = "asc") -> List[str]:
-        """Get algorithms filtered by search and tags"""
         if filter_tags is None:
             filter_tags = set()
             
@@ -63,7 +60,6 @@ class AlgorithmUtil:
                     return [r[0] for r in cur.fetchall()]
     
     def get_algorithm_details(self, name: str) -> Optional[Tuple[str, List[str]]]:
-        """Get algorithm notation and tags by name"""
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             cur.execute("SELECT notation FROM algorithms WHERE name = ?", (name,))
@@ -87,7 +83,6 @@ class AlgorithmUtil:
             return notation, tags
     
     def remove_algorithm(self, name: str) -> bool:
-        """Remove algorithm and return success status"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()
@@ -95,7 +90,6 @@ class AlgorithmUtil:
                 res = cur.fetchone()
                 if res:
                     alg_id = res[0]
-                    # Remove tag relations first for FK integrity
                     cur.execute("DELETE FROM algorithm_tags WHERE algorithm_id = ?", (alg_id,))
                     cur.execute("DELETE FROM algorithms WHERE id = ?", (alg_id,))
                     conn.commit()
@@ -105,7 +99,6 @@ class AlgorithmUtil:
             return False
     
     def get_all_tags(self) -> List[str]:
-        """Return list of all tag names"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()
@@ -115,7 +108,6 @@ class AlgorithmUtil:
             return []
     
     def algorithm_exists(self, name: str) -> bool:
-        """Check if algorithm with given name exists"""
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             cur.execute("SELECT 1 FROM algorithms WHERE name=?", (name,))
