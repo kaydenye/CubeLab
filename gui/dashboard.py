@@ -4,7 +4,7 @@
 
 import customtkinter as ctk
 from typing import Optional, Callable
-from classes.algorithm_util import AlgorithmUtil
+from classes.algorithm import Algorithm
 from classes.timer_util import TimerUtil
 from .components import HeaderFrame, FONT
 from .algorithm_list import AlgorithmList
@@ -28,7 +28,7 @@ class AlgorithmCard(DashboardCard):
     
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
-        self.algorithm_util = AlgorithmUtil()
+        self.algorithm = Algorithm()
         self.setup_ui()
     
     def setup_ui(self):
@@ -48,7 +48,7 @@ class AlgorithmCard(DashboardCard):
     def update_algorithm(self, algorithm_name: str):
         """Update card with algorithm data"""
         try:
-            details = self.algorithm_util.get_algorithm_details(algorithm_name)
+            details = self.algorithm.get_algorithm_details(algorithm_name)
             if details:
                 notation, tags = details
                 self.title_label.configure(text=algorithm_name)
@@ -65,7 +65,7 @@ class TagsCard(DashboardCard):
     
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
-        self.algorithm_util = AlgorithmUtil()
+        self.algorithm = Algorithm()
         self.setup_ui()
     
     def setup_ui(self):
@@ -86,7 +86,7 @@ class TagsCard(DashboardCard):
         
         try:
             # Get algorithm details
-            details = self.algorithm_util.get_algorithm_details(algorithm_name)
+            details = self.algorithm.get_algorithm_details(algorithm_name)
             if details:
                 notation, tags = details
                 if tags:
@@ -123,43 +123,59 @@ class BarChartCard(DashboardCard):
         super().__init__(parent, **kwargs)
         self.timer_util = TimerUtil()
         self.canvas = None
+        self.fig = None
+        self.ax = None
+        self._resize_after_id = None
+        self._resize_bound = False
         self.setup_ui()
     
     def setup_ui(self):
         """Setup bar chart card UI"""
         self.create_chart([])
+        self._bind_resize()
     
     def create_chart(self, times_data):
         """Create or update the bar chart"""
-        # Clear existing chart
+        # Clear existing chart widget
         for widget in self.winfo_children():
             widget.destroy()
-        
-        # Close any existing matplotlib figures to prevent memory leaks
-        plt.close('all')
+        # Close existing fig if any
+        try:
+            if self.fig is not None:
+                plt.close(self.fig)
+        except Exception:
+            pass
         
         # Create matplotlib figure
-        fig, ax = plt.subplots(figsize=(3, 2.5), facecolor='#33363D')
+        fig, ax = plt.subplots(figsize=(3, 2.5), facecolor='#33363D', constrained_layout=True)
+        fig.set_dpi(100)
         ax.set_facecolor('#33363D')
+        self.fig, self.ax = fig, ax
         
         if times_data:
             # Create histogram of times
             times = [float(t[0]) for t in times_data]
             bins = 10
             counts, bin_edges = np.histogram(times, bins=bins)
-            bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in range(len(bin_edges)-1)]
+            bin_centers = [(bin_edges[i] + bin_edges[i+1]) / 2 for i in range(len(bin_edges) - 1)]
             
             # Create bars
-            bars = ax.bar(range(len(counts)), counts, color='#4A9EFF', width=0.8)
+            ax.bar(range(len(counts)), counts, color='#4A9EFF', width=0.8)
             
             # Customize chart
             ax.set_xticks(range(len(bin_centers)))
-            ax.set_xticklabels([f'{x:.1f}' for x in bin_centers], color='gray', fontsize=8, rotation=45)
+            # Downsample tick labels if too many
+            labels = [f'{x:.1f}' for x in bin_centers]
+            if len(labels) > 10:
+                step = max(1, len(labels) // 10)
+                ax.set_xticks(list(range(0, len(labels), step)))
+                labels = labels[::step]
+            ax.set_xticklabels(labels, color='gray', fontsize=8, rotation=45)
             ax.set_ylabel('Count', color='gray', fontsize=8)
         else:
             # Show empty state
-            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes, 
-                   ha='center', va='center', color='gray', fontsize=12)
+            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes,
+                    ha='center', va='center', color='gray', fontsize=12)
         
         ax.tick_params(colors='gray')
         
@@ -172,10 +188,47 @@ class BarChartCard(DashboardCard):
         ax.set_axisbelow(True)
         
         # Embed in tkinter
-        plt.tight_layout()
         self.canvas = FigureCanvasTkAgg(fig, self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
+        # Ensure initial sizing fits the container
+        self._schedule_resize()
+
+    def _bind_resize(self):
+        """Bind resize events for responsive matplotlib sizing"""
+        if not self._resize_bound:
+            self.bind("<Configure>", lambda e: self._schedule_resize())
+            self._resize_bound = True
+
+    def _schedule_resize(self):
+        """Debounce resize to avoid excessive redraws"""
+        if self._resize_after_id:
+            try:
+                self.after_cancel(self._resize_after_id)
+            except Exception:
+                pass
+        self._resize_after_id = self.after(100, self._on_resize)
+
+    def _on_resize(self):
+        if not self.canvas or not self.fig:
+            return
+        # Compute available inner size (account for padding used in pack)
+        width = max(50, self.winfo_width() - 20)
+        height = max(50, self.winfo_height() - 20)
+        try:
+            dpi = self.fig.get_dpi() or 100
+            self.fig.set_size_inches(width / dpi, height / dpi, forward=True)
+            # Let constrained layout handle the axes area
+            if hasattr(self.fig, "set_layout_engine"):
+                try:
+                    self.fig.set_layout_engine("constrained")
+                except Exception:
+                    pass
+            self.canvas.get_tk_widget().configure(width=width, height=height)
+            self.canvas.draw_idle()
+        except Exception:
+            # Fallback: force a draw
+            self.canvas.draw()
     
     def destroy(self):
         """Clean up matplotlib resources"""
@@ -183,6 +236,8 @@ class BarChartCard(DashboardCard):
             if hasattr(self, 'canvas') and self.canvas:
                 self.canvas.get_tk_widget().destroy()
                 self.canvas = None
+            self.fig = None
+            self.ax = None
             plt.close('all')
         except:
             pass
@@ -467,83 +522,129 @@ class StatsCard(DashboardCard):
 
 class LineChartCard(DashboardCard):
     """Card displaying line chart"""
-    
+
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
         self.timer_util = TimerUtil()
         self.canvas = None
+        self.fig = None
+        self.ax = None
+        self._resize_after_id = None
+        self._resize_bound = False
         self.setup_ui()
-    
+
     def setup_ui(self):
         """Setup line chart card UI"""
         self.create_chart([])
-    
+        self._bind_resize()
+
     def create_chart(self, times_data):
         """Create or update the line chart"""
-        # Clear existing chart
+        # Clear existing chart widget
         for widget in self.winfo_children():
             widget.destroy()
-        
-        # Close any existing matplotlib figures to prevent memory leaks
-        plt.close('all')
-        
+        # Close existing fig if any
+        try:
+            if self.fig is not None:
+                plt.close(self.fig)
+        except Exception:
+            pass
+
         # Create matplotlib figure
-        fig, ax = plt.subplots(figsize=(3, 2.5), facecolor='#33363D')
+        fig, ax = plt.subplots(figsize=(3, 2.5), facecolor='#33363D', constrained_layout=True)
+        fig.set_dpi(100)
         ax.set_facecolor('#33363D')
-        
+        self.fig, self.ax = fig, ax
+
         if times_data and len(times_data) > 1:
             # Get times in chronological order
-            times = [float(t[0]) for t in reversed(times_data)]  # Reverse to get chronological order
+            times = [float(t[0]) for t in reversed(times_data)]
             x = range(len(times))
-            
+
             # Create line chart
             ax.plot(x, times, color='#4A9EFF', linewidth=2, marker='o', markersize=3)
-            
+
             # Customize chart
             ax.set_ylabel('Time (s)', color='gray', fontsize=8)
             ax.set_xlabel('Attempt', color='gray', fontsize=8)
             ax.tick_params(colors='gray')
-            
+
             # Set reasonable y-limits
             min_time, max_time = min(times), max(times)
-            padding = (max_time - min_time) * 0.1
+            padding = (max_time - min_time) * 0.1 if max_time > min_time else 1
             ax.set_ylim(max(0, min_time - padding), max_time + padding)
         else:
             # Show empty state
-            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes, 
-                   ha='center', va='center', color='gray', fontsize=12)
-        
+            ax.text(0.5, 0.5, 'No Data', transform=ax.transAxes,
+                    ha='center', va='center', color='gray', fontsize=12)
+
         # Remove spines
         for spine in ax.spines.values():
             spine.set_visible(False)
-        
+
         # Grid
         ax.grid(True, alpha=0.3, color='gray')
         ax.set_axisbelow(True)
-        
+
         # Embed in tkinter
-        plt.tight_layout()
         self.canvas = FigureCanvasTkAgg(fig, self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=10)
-    
+        # Ensure initial sizing fits the container
+        self._schedule_resize()
+
+    def _bind_resize(self):
+        """Bind resize events for responsive matplotlib sizing"""
+        if not self._resize_bound:
+            self.bind("<Configure>", lambda e: self._schedule_resize())
+            self._resize_bound = True
+
+    def _schedule_resize(self):
+        """Debounce resize to avoid excessive redraws"""
+        if self._resize_after_id:
+            try:
+                self.after_cancel(self._resize_after_id)
+            except Exception:
+                pass
+        self._resize_after_id = self.after(100, self._on_resize)
+
+    def _on_resize(self):
+        if not self.canvas or not self.fig:
+            return
+        width = max(50, self.winfo_width() - 20)
+        height = max(50, self.winfo_height() - 20)
+        try:
+            dpi = self.fig.get_dpi() or 100
+            self.fig.set_size_inches(width / dpi, height / dpi, forward=True)
+            if hasattr(self.fig, "set_layout_engine"):
+                try:
+                    self.fig.set_layout_engine("constrained")
+                except Exception:
+                    pass
+            self.canvas.get_tk_widget().configure(width=width, height=height)
+            self.canvas.draw_idle()
+        except Exception:
+            self.canvas.draw()
+
     def destroy(self):
         """Clean up matplotlib resources"""
         try:
             if hasattr(self, 'canvas') and self.canvas:
                 self.canvas.get_tk_widget().destroy()
                 self.canvas = None
+            self.fig = None
+            self.ax = None
             plt.close('all')
-        except:
+        except Exception:
             pass
         super().destroy()
-    
+
     def update_algorithm(self, algorithm_name: str):
         """Update chart with algorithm times"""
         try:
             times_data = self.timer_util.get_algorithm_times(algorithm_name)
             self.create_chart(times_data)
-        except Exception as e:
+        except Exception:
             self.create_chart([])
 
 class Dashboard:

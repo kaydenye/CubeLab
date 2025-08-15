@@ -112,8 +112,8 @@ class AddAlgorithmModal:
             return
         
         # Check if algorithm already exists
-        from classes.algorithm_util import AlgorithmUtil
-        service = AlgorithmUtil()
+        from classes.algorithm import Algorithm
+        service = Algorithm()
         if service.algorithm_exists(name):
             self.message_var.set("Name already exists.")
             return

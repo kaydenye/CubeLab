@@ -4,7 +4,7 @@
 
 import customtkinter as ctk
 from typing import Optional
-from classes.algorithm_util import AlgorithmUtil
+from classes.algorithm import Algorithm
 from .components import TagChip, FONT
 
 class AlgorithmDetails(ctk.CTkFrame):
@@ -13,9 +13,8 @@ class AlgorithmDetails(ctk.CTkFrame):
     def __init__(self, parent, **kwargs):
         super().__init__(parent, fg_color="#222326", corner_radius=0, **kwargs)
         
-        self.algorithm_service = AlgorithmUtil()
+        self.algorithm_service = Algorithm()
         
-        # StringVars for display
         self.name_var = ctk.StringVar(value="")
         self.notation_var = ctk.StringVar(value="")
         self.feedback_var = ctk.StringVar(value="")
@@ -23,8 +22,7 @@ class AlgorithmDetails(ctk.CTkFrame):
         self.setup_ui()
     
     def setup_ui(self):
-        """Setup the UI components"""
-        # Create a container frame that will expand
+        """Setup UI components"""
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.pack(fill="both", expand=True, padx=20, pady=20)
         

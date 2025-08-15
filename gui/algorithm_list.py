@@ -4,7 +4,7 @@
 
 import customtkinter as ctk
 from typing import Callable, Optional, Set
-from classes.algorithm_util import AlgorithmUtil
+from classes.algorithm import Algorithm
 from classes.timer_util import TimerUtil, TimerUtil
 from .components import SearchBar, FilterButton, AlgorithmListItem, FONT
 
@@ -14,7 +14,7 @@ class AlgorithmList(ctk.CTkFrame):
                  show_count: bool = False, **kwargs):
         super().__init__(parent, width=360, **kwargs)
 
-        self.algorithm_util = AlgorithmUtil()
+        self.algorithm = Algorithm()
         self.timer_util = TimerUtil()
         self.on_algorithm_select = on_algorithm_select
         self.show_remove = show_remove
@@ -70,7 +70,7 @@ class AlgorithmList(ctk.CTkFrame):
             widget.destroy()
         
         # Get algorithms
-        algorithms = self.algorithm_util.get_algorithms_with_filters(
+        algorithms = self.algorithm.get_algorithms_with_filters(
             search_query, self.filter_tags, self.sort_order
         )
         
@@ -102,7 +102,7 @@ class AlgorithmList(ctk.CTkFrame):
     
     def _on_algorithm_remove(self, name: str):
         """Handle algorithm removal"""
-        if self.algorithm_util.remove_algorithm(name):
+        if self.algorithm.remove_algorithm(name):
             self.refresh()
             # Emit removal signal if needed
     
@@ -171,7 +171,7 @@ class AlgorithmList(ctk.CTkFrame):
         tags_frame.pack(fill="x", pady=(0, 12))
         
         tag_vars = {}
-        tags = self.algorithm_util.get_all_tags()
+        tags = self.algorithm.get_all_tags()
         if tags:
             for tag in tags:
                 var = ctk.BooleanVar(value=(tag in self.filter_tags))

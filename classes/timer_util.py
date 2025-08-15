@@ -4,29 +4,48 @@
 
 import sqlite3
 import time
-from typing import List, Tuple, Optional
-from datetime import datetime
 from .algorithm import Algorithm
 
 class TimerUtil:
-    """Service class to handle timer recording and statistics"""
-    
+    """
+    Function: Service class to handle stopwatch recording and statistics
+    Inputs: none
+    Outputs: none
+    """
     def __init__(self):
         self.db_path = Algorithm.db_path
     
-    def save_time(self, algorithm_name: str, time_seconds: float) -> bool:
-        """Save a timer result to the database"""
+    def _ensure_times_columns(self, cursor):
+        """
+        Function: Ensure new columns exist on the times table
+        Inputs: SQLite cursor
+        Outputs: None (alters schema if needed)
+        """
+        cursor.execute("PRAGMA table_info(times)")
+        columns = {col[1] for col in cursor.fetchall()}
+        # Penalty columns used throughout the app
+        if 'plus_two' not in columns:
+            cursor.execute("ALTER TABLE times ADD COLUMN plus_two BOOLEAN DEFAULT 0")
+        if 'dnf' not in columns:
+            cursor.execute("ALTER TABLE times ADD COLUMN dnf BOOLEAN DEFAULT 0")
+
+    def save_time(self, algorithm_name, time_seconds) :
+        """
+        Function: Save a stopwatch time to the database
+        Inputs: algorithm_name, time_seconds
+        Outputs: True on success, false otherwise
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cur = conn.cursor()
+                cursor = conn.cursor()
                 # Get algorithm ID
-                cur.execute("SELECT id FROM algorithms WHERE name = ?", (algorithm_name,))
-                result = cur.fetchone()
+                cursor.execute("SELECT id FROM algorithms WHERE name = ?", (algorithm_name,))
+                result = cursor.fetchone()
                 if result:
                     algorithm_id = result[0]
                     # Insert the time
-                    cur.execute(
-                        "INSERT INTO times (algorithm_id, time_seconds) VALUES (?, ?)",
+                    cursor.execute(
+                        "INSERT INTO times (algorithm_id, time_seconds, plus_two, dnf) VALUES (?, ?, 0, 0)",
                         (algorithm_id, time_seconds)
                     )
                     conn.commit()
@@ -35,19 +54,15 @@ class TimerUtil:
         except Exception:
             return False
     
-    def get_algorithm_times(self, algorithm_name: str) -> List[Tuple[float, str]]:
-        """Get all valid times for a specific algorithm (excluding DNF times)"""
+    def get_algorithm_times(self, algorithm_name):
+        """
+        Function: Get all valid times for an algorithm, excluding DNF
+        Inputs: algorithm_name
+        Outputs: List of adjusted_time_seconds, timestamp
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()
-                # First, check if penalty columns exist, if not add them
-                cur.execute("PRAGMA table_info(times)")
-                columns = [col[1] for col in cur.fetchall()]
-                
-                if 'plus_two' not in columns:
-                    cur.execute("ALTER TABLE times ADD COLUMN plus_two BOOLEAN DEFAULT 0")
-                if 'dnf' not in columns:
-                    cur.execute("ALTER TABLE times ADD COLUMN dnf BOOLEAN DEFAULT 0")
                 
                 cur.execute("""
                     SELECT 
@@ -66,8 +81,12 @@ class TimerUtil:
             print(f"Error getting algorithm times: {e}")
             return []
     
-    def get_time_count(self, algorithm_name: str) -> int:
-        """Get the number of times recorded for an algorithm"""
+    def get_time_count(self, algorithm_name):
+        """
+        Function: Get the number of times recorded for an algorithm
+        Inputs: algorithm_name
+        Outputs: Count for times for algorithm_name
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()
@@ -80,8 +99,12 @@ class TimerUtil:
         except Exception:
             return 0
     
-    def get_time_statistics(self, times_data: List[Tuple[float, str]]) -> dict:
-        """Calculate statistics from times data"""
+    def get_time_statistics(self, times_data):
+        """
+        Function: Calculate statistics from times
+        Inputs: times_data which is list of time_seconds and timestamp
+        Outputs: Dictionary with keys for personal best, worst, average, count or empty dictionary
+        """
         if not times_data:
             return {}
         
@@ -93,19 +116,15 @@ class TimerUtil:
             'count': len(times_only)
         }
     
-    def get_algorithm_times_with_ids(self, algorithm_name: str) -> List[Tuple[int, float, str, bool, bool]]:
-        """Get all times for a specific algorithm with IDs and penalty flags"""
+    def get_algorithm_times_with_ids(self, algorithm_name):
+        """
+        Function: Get all times for an algorithm including IDs and penalties (+2, DNF)
+        Inputs: algorithm_name
+        Outputs: id, time_seconds, timestamp, plus_two, dnf
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()
-                # First, check if penalty columns exist, if not add them
-                cur.execute("PRAGMA table_info(times)")
-                columns = [col[1] for col in cur.fetchall()]
-                
-                if 'plus_two' not in columns:
-                    cur.execute("ALTER TABLE times ADD COLUMN plus_two BOOLEAN DEFAULT 0")
-                if 'dnf' not in columns:
-                    cur.execute("ALTER TABLE times ADD COLUMN dnf BOOLEAN DEFAULT 0")
                 
                 cur.execute("""
                     SELECT t.id, t.time_seconds, t.timestamp, 
@@ -120,16 +139,19 @@ class TimerUtil:
             print(f"Error getting times with IDs: {e}")
             return []
     
-    def update_time_penalty(self, time_id: int, plus_two: bool = None, dnf: bool = None) -> bool:
-        """Update penalty flags for a specific time"""
+    def update_time_penalty(self, time_id, plus_two=None, dnf=None):
+        """
+        Function: Update penalties for a specific time
+        Inputs: time_id, plus_two, dnf
+        Outputs: True if time was updated, false otherwise
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()
-                
-                # Build update query based on provided parameters
+
                 updates = []
                 params = []
-                
+
                 if plus_two is not None:
                     updates.append("plus_two = ?")
                     params.append(plus_two)
@@ -149,8 +171,12 @@ class TimerUtil:
             print(f"Error updating time penalty: {e}")
             return False
     
-    def delete_time(self, time_id: int) -> bool:
-        """Delete a specific time from the database"""
+    def delete_time(self, time_id):
+        """
+        Function: Delete a specific time from the database
+        Inputs: time_id
+        Outputs: True if time was deleted, false otherwise
+        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cur = conn.cursor()

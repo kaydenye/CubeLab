@@ -157,6 +157,6 @@ class MainWindow:
             # Exit the application
             self.parent_frame.winfo_toplevel().destroy()
 
-def create_algorithm_ui(parent_frame: ctk.CTkFrame):
+def create_ui(parent_frame: ctk.CTkFrame):
     """Factory function for backward compatibility"""
     return MainWindow(parent_frame)

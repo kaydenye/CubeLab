@@ -1,1 +1,1 @@
-# Classes package for CubeLab
+# Classes package

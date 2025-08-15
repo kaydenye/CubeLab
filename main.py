@@ -1,11 +1,14 @@
 import customtkinter as ctk
 import os
-from gui.main_window import create_algorithm_ui
+from gui.main_window import create_ui
 import platform
+from database import init_db
 
 if platform.system() == "Windows":
     from ctypes import windll
     windll.shcore.SetProcessDpiAwareness(2)
+
+init_db()
 
 app = ctk.CTk()
 app.title("CubeLab")
@@ -23,6 +26,6 @@ main_frame.grid(row=0, column=0, sticky="nsew")
 app.grid_rowconfigure(0, weight=1)
 app.grid_columnconfigure(0, weight=1)
 
-create_algorithm_ui(main_frame)
+create_ui(main_frame)
 
 app.mainloop()
