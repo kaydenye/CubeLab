@@ -22,7 +22,7 @@ class Stopwatch:
     def start_hold(self):
         """
         Function: Begin the hold to start process for the stopwatch
-        Inputs: none
+        Input: none
         Outputs: none
         """
         if not self.running and not self.holding:
@@ -32,10 +32,12 @@ class Stopwatch:
             if self.on_state_change:
                 self.on_state_change("holding")
     
+    # hold_threshold: float, seconds required to ready up (float for timing)
+    # Returns: bool (True if ready, False otherwise)
     def check_hold_duration(self, hold_threshold: float = 0.5) -> bool:
         """
         Function: Check whether the user has held the spacebar past the threshold to become ready
-        Inputs: hold_threshold (seconds required for the stopwatch to ready up when the user holds the spacebar)
+        Input: hold_threshold (seconds required for the stopwatch to ready up when the user holds the spacebar)
         Outputs: True if ready, otherwise False
         """
         if not self.hold_start or not self.holding:
@@ -54,7 +56,7 @@ class Stopwatch:
     def release_hold(self):
         """
         Function: Handle release after the user holds spacebar
-        Inputs: none
+        Input: none
         Outputs: none (starts timer if ready otherwise resets hold state)
         """
         if self.ready and not self.running:
@@ -67,7 +69,7 @@ class Stopwatch:
     def reset_hold(self):
         """
         Function: Reset the hold state
-        Inputs: none
+        Input: none
         Outputs: none
         """
         self.holding = False
@@ -79,7 +81,7 @@ class Stopwatch:
     def start(self):
         """
         Function: Start the stopwatch
-        Inputs: none
+        Input: none
         Outputs: none
         """
         self.running = True
@@ -94,12 +96,12 @@ class Stopwatch:
     def stop(self):
         """
         Function: Stop the stopwatch and calculate the final time
-        Inputs: none
+        Input: none
         Outputs: Elapsed time in seconds to three decimal places, return 0 if the stopwatch was not running
         """
         if self.running:
             self.running = False
-            # Get the current time and subtract by the time the stopwatch started
+            # Get the current time and subtract by the time the stopwatch started to get elapsed time
             self.elapsed = time.time() - self.start_time
             if self.on_state_change:
                 self.on_state_change("stopped")
@@ -109,7 +111,7 @@ class Stopwatch:
     def reset(self):
         """
         Function: Reset the stopwatch to initial state
-        Inputs: none
+        Input: none
         Outputs: none
         """
         self.running = False
@@ -119,20 +121,24 @@ class Stopwatch:
         if self.on_state_change:
             self.on_state_change("ready")
     
+    # No args. Gets the current elapsed time.
+    # Returns: float (elapsed time in seconds)
     def get_time(self) -> float:
         """
         Function: Get the current elapsed time
-        Inputs: none
+        Input: none
         Outputs: Elapsed time in seconds to three decimal points. If running, time since start, otherwise last time that was recorded
         """
         if self.running:
             return round(time.time() - self.start_time, 3)
         return round(self.elapsed, 3)
 
+    # No args. Gets the current stopwatch state label.
+    # Returns: str ("running", "ready", "holding", or "stopped")
     def get_state(self) -> str:
         """
         Function: Get the current stopwatch state label
-        Inputs: none
+        Input: none
         Outputs: Either "running", "ready", "holding", "stopped"
         """
         if self.running:

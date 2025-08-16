@@ -3,14 +3,16 @@
 #   File: gui/algorithm_details.py
 
 import customtkinter as ctk
-from typing import Optional
 from classes.algorithm import Algorithm
 from .components import TagChip, FONT
 
-class AlgorithmDetails(ctk.CTkFrame):
-    """Algorithm details display component"""
-    
+class AlgorithmDetails(ctk.CTkFrame):    
     def __init__(self, parent, **kwargs):
+        """
+        Function: Initialise the algorithm details component
+        Input: parent (CTk widget), **kwargs
+        Outputs: None
+        """
         super().__init__(parent, fg_color="#222326", corner_radius=0, **kwargs)
         
         self.algorithm_service = Algorithm()
@@ -22,7 +24,11 @@ class AlgorithmDetails(ctk.CTkFrame):
         self.setup_ui()
     
     def setup_ui(self):
-        """Setup UI components"""
+        """
+        Function: Setup UI for algorithm details display
+        Input: None
+        Outputs: None
+        """
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
@@ -46,8 +52,22 @@ class AlgorithmDetails(ctk.CTkFrame):
         self.feedback_label = ctk.CTkLabel(self.info_frame, textvariable=self.feedback_var)
         self.feedback_label.pack(pady=10)
     
-    def show_algorithm(self, name: str):
-        """Display algorithm details"""
+    # name: str or None, algorithm name to display (str for lookup, None for reset)
+    # Returns: None
+    def show_algorithm(self, name):
+        """
+        Function: Display algorithm details by name
+        Input: name (str)
+        Outputs: None (updates display with algorithm details)
+        """
+        if name is None:
+            # No algorithm selected - show default state
+            self.name_var.set("No Algorithm Selected")
+            self.notation_var.set("")
+            self.feedback_var.set("Select an algorithm to view details")
+            self._clear_tags_display()
+            return
+            
         details = self.algorithm_service.get_algorithm_details(name)
         if not details:
             self.feedback_var.set(f"Could not load '{name}'.")
@@ -62,8 +82,15 @@ class AlgorithmDetails(ctk.CTkFrame):
         
         # Update tags
         self._update_tags_display(tags)
+
+    def _clear_tags_display(self):
+        """Clear the tags display"""
+        for widget in self.tags_frame.winfo_children():
+            widget.destroy()
     
-    def _update_tags_display(self, tags: list):
+    # tags: list, list of tag strings (list for multiple tags)
+    # Returns: None
+    def _update_tags_display(self, tags):
         """Update the tags display"""
         # Clear existing tags
         for widget in self.tags_frame.winfo_children():
@@ -90,6 +117,8 @@ class AlgorithmDetails(ctk.CTkFrame):
         for widget in self.tags_frame.winfo_children():
             widget.destroy()
     
-    def set_feedback(self, message: str):
+    # message: str, feedback message to display (str for UI)
+    # Returns: None
+    def set_feedback(self, message):
         """Set feedback message"""
         self.feedback_var.set(message)

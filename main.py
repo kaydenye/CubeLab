@@ -13,6 +13,7 @@ init_db()
 app = ctk.CTk()
 app.title("CubeLab")
 
+# Add icon for app
 script_dir = os.path.dirname(os.path.abspath(__file__))
 icon_path = os.path.join(script_dir, "icon.ico")
 app.iconbitmap(icon_path)

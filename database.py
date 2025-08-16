@@ -1,7 +1,7 @@
 import sqlite3
 
 def init_db():
-    """Initialize the SQLite database schema and migrate if needed."""
+    """Initialise the SQLite database schema and migrate if needed."""
     conn = sqlite3.connect("cubelab.db")  # Creates file if it doesn't exist
     cursor = conn.cursor()
 

@@ -1,1 +1,1 @@
-# GUI package for CubeLab
+# GUI package

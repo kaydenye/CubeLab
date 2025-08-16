@@ -7,32 +7,16 @@ import time
 from .algorithm import Algorithm
 
 class TimerUtil:
-    """
-    Function: Service class to handle stopwatch recording and statistics
-    Inputs: none
-    Outputs: none
-    """
     def __init__(self):
         self.db_path = Algorithm.db_path
-    
-    def _ensure_times_columns(self, cursor):
-        """
-        Function: Ensure new columns exist on the times table
-        Inputs: SQLite cursor
-        Outputs: None (alters schema if needed)
-        """
-        cursor.execute("PRAGMA table_info(times)")
-        columns = {col[1] for col in cursor.fetchall()}
-        # Penalty columns used throughout the app
-        if 'plus_two' not in columns:
-            cursor.execute("ALTER TABLE times ADD COLUMN plus_two BOOLEAN DEFAULT 0")
-        if 'dnf' not in columns:
-            cursor.execute("ALTER TABLE times ADD COLUMN dnf BOOLEAN DEFAULT 0")
 
+    # algorithm_name: str, name of the algorithm (str for database lookup)
+    # time_seconds: float, time to save (float for precision to three decimals)
+    # Returns: bool (True on success, false otherwise)
     def save_time(self, algorithm_name, time_seconds) :
         """
         Function: Save a stopwatch time to the database
-        Inputs: algorithm_name, time_seconds
+        Input: algorithm_name, time_seconds
         Outputs: True on success, false otherwise
         """
         try:
@@ -54,10 +38,12 @@ class TimerUtil:
         except Exception:
             return False
     
+    # algorithm_name: str, name of the algorithm (str for database lookup)
+    # Returns: list of (adjusted_time_seconds, timestamp)
     def get_algorithm_times(self, algorithm_name):
         """
-        Function: Get all valid times for an algorithm, excluding DNF
-        Inputs: algorithm_name
+        Function: Get all valid times for an algorithm, excluding times that have a DNF 
+        Input: algorithm_name
         Outputs: List of adjusted_time_seconds, timestamp
         """
         try:
@@ -81,10 +67,12 @@ class TimerUtil:
             print(f"Error getting algorithm times: {e}")
             return []
     
+    # algorithm_name: str, name of the algorithm (str for database lookup)
+    # Returns: int (number of times recorded for a particular algorithm)
     def get_time_count(self, algorithm_name):
         """
         Function: Get the number of times recorded for an algorithm
-        Inputs: algorithm_name
+        Input: algorithm_name
         Outputs: Count for times for algorithm_name
         """
         try:
@@ -99,10 +87,12 @@ class TimerUtil:
         except Exception:
             return 0
     
+    # times_data: list, list of (time_seconds, timestamp) tuples (list for stats)
+    # Returns: dict (keys: best, worst, average, count)
     def get_time_statistics(self, times_data):
         """
         Function: Calculate statistics from times
-        Inputs: times_data which is list of time_seconds and timestamp
+        Input: times_data which is list of time_seconds and timestamp
         Outputs: Dictionary with keys for personal best, worst, average, count or empty dictionary
         """
         if not times_data:
@@ -116,10 +106,12 @@ class TimerUtil:
             'count': len(times_only)
         }
     
+    # algorithm_name: str, name of the algorithm (str for database lookup)
+    # Returns: list of (id, time_seconds, timestamp, plus_two, dnf)
     def get_algorithm_times_with_ids(self, algorithm_name):
         """
         Function: Get all times for an algorithm including IDs and penalties (+2, DNF)
-        Inputs: algorithm_name
+        Input: algorithm_name
         Outputs: id, time_seconds, timestamp, plus_two, dnf
         """
         try:
@@ -138,11 +130,15 @@ class TimerUtil:
         except Exception as e:
             print(f"Error getting times with IDs: {e}")
             return []
-    
+
+    # time_id: int, unique ID of the time entry (int for database key)
+    # plus_two: bool or None, set +2 penalty (bool for database update)
+    # dnf: bool or None, set DNF status (bool for database update)
+    # Returns: bool (True if updated, false otherwise)
     def update_time_penalty(self, time_id, plus_two=None, dnf=None):
         """
         Function: Update penalties for a specific time
-        Inputs: time_id, plus_two, dnf
+        Input: time_id, plus_two, dnf
         Outputs: True if time was updated, false otherwise
         """
         try:
@@ -171,10 +167,12 @@ class TimerUtil:
             print(f"Error updating time penalty: {e}")
             return False
     
+    # time_id: int, unique ID of the time entry (int for database key)
+    # Returns: bool (True if deleted, false otherwise)
     def delete_time(self, time_id):
         """
         Function: Delete a specific time from the database
-        Inputs: time_id
+        Input: time_id
         Outputs: True if time was deleted, false otherwise
         """
         try:

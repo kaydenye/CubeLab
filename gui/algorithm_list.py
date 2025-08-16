@@ -3,16 +3,28 @@
 #   File: gui/algorithm_list.py
 
 import customtkinter as ctk
-from typing import Callable, Optional, Set
 from classes.algorithm import Algorithm
+from classes.timer_util import TimerUtil
+from .components import SearchBar, FilterButton, AlgorithmListItem, FONT
 from classes.timer_util import TimerUtil, TimerUtil
 from .components import SearchBar, FilterButton, AlgorithmListItem, FONT
 
 class AlgorithmList(ctk.CTkFrame):    
-    def __init__(self, parent, on_algorithm_select: Callable = None, 
-                 show_remove: bool = True, show_add: bool = True,
-                 show_count: bool = False, **kwargs):
-        super().__init__(parent, width=360, **kwargs)
+    # parent: CTk widget, parent container for list (CTk widget for UI)
+    # on_algorithm_select: function or None, callback for selection (function for event)
+    # show_remove: bool, show remove button (bool for UI)
+    # show_add: bool, show add button (bool for UI)
+    # show_count: bool, show count label (bool for UI)
+    # Returns: None
+    def __init__(self, parent, on_algorithm_select=None, 
+                 show_remove=True, show_add=True,
+                 show_count=False):
+        """
+        Function: Initialise the algorithm list component
+        Input: parent (CTk widget), on_algorithm_select (callback), show_remove (bool), show_add (bool), show_count (bool), **kwargs
+        Outputs: None
+        """
+        super().__init__(parent, width=360)
 
         self.algorithm = Algorithm()
         self.timer_util = TimerUtil()
@@ -22,19 +34,23 @@ class AlgorithmList(ctk.CTkFrame):
         self.show_count = show_count
         
         # State
-        self.filter_tags: Set[str] = set()
+        self.filter_tags = set()
         self.sort_order = "asc"
         
         self.setup_ui()
         self.load_algorithms()
     
     def setup_ui(self):
-        """Setup the UI components"""
+        """
+        Function: Setup the UI components for the algorithm list
+        Input: None
+        Outputs: None
+        """
         self.grid_propagate(False)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=0)  # search row
-        self.grid_rowconfigure(1, weight=1)  # list
-        self.grid_rowconfigure(2, weight=0)  # add button
+        self.grid_rowconfigure(0, weight=0) # search row
+        self.grid_rowconfigure(1, weight=1) # list
+        self.grid_rowconfigure(2, weight=0) # add button
         
         # Search and filter row
         search_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -59,12 +75,24 @@ class AlgorithmList(ctk.CTkFrame):
             self.add_button = ctk.CTkButton(self, text="+", width=40, command=self._on_add_click)
             self.add_button.grid(row=2, column=0, sticky="ew", padx=10, pady=(5, 10))
     
-    def on_search_change(self, query: str):
-        """Handle search query change"""
+    # query: str, search query (str for filtering)
+    # Returns: None
+    def on_search_change(self, query):
+        """
+        Function: Handle when the user changes the search query
+        Input: query (str)
+        Outputs: None (refreshes algorithm list)
+        """
         self.load_algorithms(query)
     
-    def load_algorithms(self, search_query: str = ""):
-        """Load and display algorithms"""
+    # search_query: str, search query (str for filtering)
+    # Returns: None
+    def load_algorithms(self, search_query=""):
+        """
+        Function: Load and display algorithms based on search and filters
+        Input: search_query (str, optional)
+        Outputs: None (populates scrollable list)
+        """
         # Clear current list
         for widget in self.scrollable_list.winfo_children():
             widget.destroy()
@@ -74,7 +102,7 @@ class AlgorithmList(ctk.CTkFrame):
             search_query, self.filter_tags, self.sort_order
         )
         
-        # Create list items
+        # Create algorithm list
         for name in algorithms:
             count = 0
             if self.show_count:
@@ -91,39 +119,65 @@ class AlgorithmList(ctk.CTkFrame):
             )
             item.pack(fill="x", pady=2, padx=5)
         
-        # Auto-select first if no search and we have items
+        # Show the first algorithm in the algorithm list at first
         if not search_query and algorithms and self.on_algorithm_select:
             self.on_algorithm_select(algorithms[0])
+        elif not algorithms and self.on_algorithm_select:
+            # No algorithms available, say that there is no selection
+            self.on_algorithm_select(None)
     
-    def _on_algorithm_click(self, name: str):
-        """Handle algorithm selection"""
+    # name: str, algorithm name (str for selection)
+    # Returns: None
+    def _on_algorithm_click(self, name):
+        """
+        Function: Handle when the user clicks an algorithm from the algorithm list
+        Input: name (str)
+        Outputs: None
+        """
         if self.on_algorithm_select:
             self.on_algorithm_select(name)
     
-    def _on_algorithm_remove(self, name: str):
-        """Handle algorithm removal"""
+    # name: str, algorithm name (str for removal)
+    # Returns: None
+    def _on_algorithm_remove(self, name):
+        """
+        Function: Handle algorithm removal
+        Input: name (str)
+        Outputs: None (removes algorithm and refreshes algorithm list)
+        """
         if self.algorithm.remove_algorithm(name):
             self.refresh()
-            # Emit removal signal if needed
-    
+
     def _on_add_click(self):
-        """Internal add button click handler"""
+        """
+        Function: Internal add button click
+        Input: None
+        Outputs: None (calls on_add_click if available)
+        """
         if hasattr(self, 'on_add_click') and callable(self.on_add_click):
             self.on_add_click()
-    
+
     def on_add_click(self):
-        """Handle add button click - to be overridden"""
+        """
+        Function: Handle add button click
+        Input: None
+        Outputs: None
+        """
         pass
     
     def open_filter_dialog(self):
-        """Open filter dialog"""
+        """
+        Function: Open filter dialog for selecting tags
+        Input: None
+        Outputs: None (creates filter dialog)
+        """
         dlg = ctk.CTkToplevel(self.winfo_toplevel())
         dlg.title("Filter & Sort")
         dlg.geometry("675x450")
         dlg.transient(self.winfo_toplevel())
         dlg.grab_set()
         
-        # Main frame with border
+        # Main frame
         modal_frame = ctk.CTkFrame(
             dlg,
             corner_radius=15,
@@ -193,8 +247,8 @@ class AlgorithmList(ctk.CTkFrame):
         sort_menu.pack(anchor="w")
         
         # Buttons frame in right panel
-        btn_frame = ctk.CTkFrame(right_panel, fg_color="transparent")
-        btn_frame.pack(side="bottom", anchor="se", padx=20, pady=20)
+        button_frame = ctk.CTkFrame(right_panel, fg_color="transparent")
+        button_frame.pack(side="bottom", anchor="se", padx=20, pady=20)
         
         def apply_and_close():
             self.filter_tags = {name for name, var in tag_vars.items() if var.get()}
@@ -209,13 +263,17 @@ class AlgorithmList(ctk.CTkFrame):
             self.refresh()
             dlg.destroy()
         
-        clear_btn = ctk.CTkButton(btn_frame, text="Clear", command=clear_and_close, width=100)
-        clear_btn.pack(side="right", padx=(10, 0))
-        
-        apply_btn = ctk.CTkButton(btn_frame, text="Apply", command=apply_and_close, width=100)
-        apply_btn.pack(side="right", padx=(0, 10))
-    
+        clear_button = ctk.CTkButton(button_frame, text="Clear", command=clear_and_close, width=100, fg_color="#bc2626", hover_color="#a01e1e")
+        clear_button.pack(side="right", padx=(10, 0))
+
+        apply_button = ctk.CTkButton(button_frame, text="Apply", command=apply_and_close, width=100, fg_color="#26BC53", hover_color="#1e9c43")
+        apply_button.pack(side="right", padx=(0, 10))
+
     def refresh(self):
-        """Refresh the algorithm list"""
+        """
+        Function: Refresh the algorithm list with current search and filters
+        Input: None
+        Outputs: None (reloads algorithm list)
+        """
         query = self.search_bar.get_query() if hasattr(self.search_bar, 'get_query') else ""
         self.load_algorithms(query)

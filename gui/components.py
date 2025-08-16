@@ -3,13 +3,21 @@
 #   File: gui/components.py
 
 import customtkinter as ctk
-from typing import Callable, Optional
 
 FONT = "Rethink Sans"
 
 class SearchBar(ctk.CTkFrame):
     
-    def __init__(self, parent, on_search_change: Callable = None, **kwargs):
+    # parent: CTk widget, parent container for search bar (CTk widget for UI)
+    # on_search_change: function or None, callback for search changes (function for event)
+    # **kwargs: dict, extra options for CTkFrame
+    # Returns: None
+    def __init__(self, parent, on_search_change=None, **kwargs):
+        """
+        Function: Initialise the search bar component
+        Input: parent (CTk widget), on_search_change (callback function), **kwargs
+        Outputs: None
+        """
         kwargs.setdefault('fg_color', 'transparent')
         kwargs.setdefault('border_width', 0)
         super().__init__(parent, **kwargs)
@@ -28,20 +36,73 @@ class SearchBar(ctk.CTkFrame):
         
         if self.on_search_change:
             self.search_entry.bind("<KeyRelease>", self._on_change)
-    
+        
+        # Bind escape key to unfocus the search bar
+        self.search_entry.bind("<Escape>", self._on_escape)
+        
+        # Bind click events to the parent frame to unfocus when clicking outside
+        self._setup_focus_handling()
+
+    def _setup_focus_handling(self):
+        """Setup focus handling for clicking outside the search bar"""
+        # event: event object, click event (object for event binding)
+        # Returns: None
+        def lose_focus(event):
+            # Check if the click was outside the search bar
+            if event.widget != self.search_entry and not str(event.widget).startswith(str(self.search_entry)):
+                # Move focus to the main window
+                top_level = self.winfo_toplevel()
+                top_level.focus_set()
+
+        top_level = self.winfo_toplevel()
+        top_level.bind("<Button-1>", lose_focus, add="+")
+
+    # event: event object, key event (object for event binding)
+    # Returns: None
+    def _on_escape(self, event):
+        """Handle escape key to unfocus"""
+        top_level = self.winfo_toplevel()
+        top_level.focus_set() # Move focus away from the search entry
+
+    # event: event object or None, key event (object for event binding)
+    # Returns: None
     def _on_change(self, event=None):
+        """
+        Function: Handle for when the user updates the search bar input
+        Input: event (optional object)
+        Outputs: None (calls search change)
+        """
         if self.on_search_change:
             self.on_search_change(self.get_query())
     
-    def get_query(self) -> str:
+    def get_query(self):
+        """
+        Function: Get the current search query text
+        Input: None
+        Outputs: str (lowercase search query to match with algorithm list)
+        """
         return self.search_entry.get().lower()
-    
+
     def clear(self):
+        """
+        Function: Clear the search entry field
+        Input: None
+        Outputs: None
+        """
         self.search_entry.delete(0, "end")
 
 class FilterButton(ctk.CTkButton):
     
-    def __init__(self, parent, on_filter_click: Callable = None, **kwargs):
+    # parent: CTk widget, parent container for button (CTk widget for UI)
+    # on_filter_click: function or None, callback for filter click (function for event)
+    # **kwargs: dict, extra options for CTkButton
+    # Returns: None
+    def __init__(self, parent, on_filter_click=None, **kwargs):
+        """
+        Function: Initialise the filter button component
+        Input: parent (CTk widget), on_filter_click (callback function), **kwargs
+        Outputs: None
+        """
         super().__init__(parent, text="Filter", width=90, **kwargs)
         
         if on_filter_click:
@@ -49,7 +110,16 @@ class FilterButton(ctk.CTkButton):
 
 class TagChip(ctk.CTkLabel):
     
-    def __init__(self, parent, tag_text: str, **kwargs):
+    # parent: CTk widget, parent container for tag (CTk widget for UI)
+    # tag_text: str, text to display in tag (str for label)
+    # **kwargs: dict, extra options for CTkLabel
+    # Returns: None
+    def __init__(self, parent, tag_text, **kwargs):
+        """
+        Function: Initialise a tag chip display component
+        Input: parent (CTk widget), tag_text (str), **kwargs
+        Outputs: None
+        """
         super().__init__(
             parent,
             text=tag_text,
@@ -63,9 +133,23 @@ class TagChip(ctk.CTkLabel):
 
 class AlgorithmListItem(ctk.CTkFrame):
     
-    def __init__(self, parent, name: str, on_click: Callable = None, 
-                 show_remove: bool = True, on_remove: Callable = None,
-                 show_count: bool = False, count: int = 0, **kwargs):
+    # parent: CTk widget, parent container for list item (CTk widget for UI)
+    # name: str, algorithm name (str for label)
+    # on_click: function or None, callback for click (function for event)
+    # show_remove: bool, show remove button (bool for UI)
+    # on_remove: function or None, callback for remove (function for event)
+    # show_count: bool, show count label (bool for UI)
+    # count: int, number of times (int for display)
+    # **kwargs: dict, extra options for CTkFrame
+    # Returns: None
+    def __init__(self, parent, name, on_click=None, 
+                 show_remove=True, on_remove=None,
+                 show_count=False, count=0, **kwargs):
+        """
+        Function: Initialise an algorithm list item component
+        Input: parent (CTk widget), name (str), on_click (callback), show_remove (bool), on_remove (callback), show_count (bool), count (int), **kwargs
+        Outputs: None
+        """
         super().__init__(parent, **kwargs)
         
         self.name_label = ctk.CTkLabel(self, text=name, cursor="hand2")
@@ -81,7 +165,7 @@ class AlgorithmListItem(ctk.CTkFrame):
             count_label.pack(side="right", padx=(0, 10))
         
         if show_remove and on_remove:
-            remove_btn = ctk.CTkButton(
+            remove_button = ctk.CTkButton(
                 self,
                 text="Remove",
                 fg_color="red",
@@ -89,13 +173,27 @@ class AlgorithmListItem(ctk.CTkFrame):
                 width=80,
                 command=lambda: on_remove(name),
             )
-            remove_btn.pack(side="right")
+            remove_button.pack(side="right")
 
 class HeaderFrame(ctk.CTkFrame):
     
-    def __init__(self, parent, title: str = "", show_back: bool = False, 
-                 on_back: Callable = None, show_dashboard: bool = False,
-                 on_dashboard: Callable = None, on_exit: Callable = None, **kwargs):
+    # parent: CTk widget, parent container for header (CTk widget for UI)
+    # title: str, header title (str for label)
+    # show_back: bool, show back button (bool for UI)
+    # on_back: function or None, callback for back (function for event)
+    # show_dashboard: bool, show dashboard button (bool for UI)
+    # on_dashboard: function or None, callback for dashboard (function for event)
+    # on_exit: function or None, callback for exit (function for event)
+    # **kwargs: dict, extra options for CTkFrame
+    # Returns: None
+    def __init__(self, parent, title="", show_back=False, 
+                 on_back=None, show_dashboard=False,
+                 on_dashboard=None, on_exit=None, **kwargs):
+        """
+        Function: Initialise the header frame component
+        Input: parent (CTk widget), title (str), show_back (bool), on_back (callback), show_dashboard (bool), on_dashboard (callback), on_exit (callback), **kwargs
+        Outputs: None
+        """
         super().__init__(parent, height=80, **kwargs)
         
         self._fg_color = "#353A40"
