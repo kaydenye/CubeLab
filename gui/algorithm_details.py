@@ -91,21 +91,43 @@ class AlgorithmDetails(ctk.CTkFrame):
     # tags: list, list of tag strings (list for multiple tags)
     # Returns: None
     def _update_tags_display(self, tags):
-        """Update the tags display"""
+        """Update the tags display (max 10 tags)"""
         # Clear existing tags
         for widget in self.tags_frame.winfo_children():
             widget.destroy()
         
-        if tags:
-            tag_container = ctk.CTkFrame(self.tags_frame, fg_color="transparent")
-            tag_container.pack(anchor="center")
-            
-            for tag in tags:
-                tag_chip = TagChip(tag_container, tag)
-                tag_chip.pack(side="left", padx=(0, 8), pady=2)
-        else:
+        if not tags:
             no_tags_label = ctk.CTkLabel(self.tags_frame, text="—", text_color="gray")
             no_tags_label.pack(anchor="center")
+            return
+        
+        # Create container for tags
+        tag_container = ctk.CTkFrame(self.tags_frame, fg_color="transparent")
+        tag_container.pack(anchor="center")
+        
+        # Show all tags with wrapping to new lines (max 10)
+        current_row = ctk.CTkFrame(tag_container, fg_color="transparent")
+        current_row.pack(anchor="center", pady=2)
+        
+        current_width = 0
+        max_width = 400  # Approximate max width before wrapping
+        
+        # Limit to 10 tags maximum
+        display_tags = tags[:10]
+        
+        for tag in display_tags:
+            tag_chip = TagChip(current_row, tag)
+            tag_chip.update_idletasks()
+            tag_width = tag_chip.winfo_reqwidth() + 8  # Include padding
+            
+            # If adding this tag would exceed max width, start new row
+            if current_width + tag_width > max_width and current_width > 0:
+                current_row = ctk.CTkFrame(tag_container, fg_color="transparent")
+                current_row.pack(anchor="center", pady=2)
+                current_width = 0
+            
+            tag_chip.pack(side="left", padx=(0, 8), pady=2)
+            current_width += tag_width
     
     def clear(self):
         """Clear the details display"""

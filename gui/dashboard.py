@@ -569,7 +569,7 @@ class StatsCard(DashboardCard):
     # times: list, list of times (float) to average (list for multiple values)
     # count: int, number of solves to average (int for window size)
     # Returns: float or None (best average or None if not enough times)
-    def _calculate_best_average(self, times: list, count: int) -> float | None:
+    def _calculate_best_average(self, times: list, count: int):
         """
         Function: Calculate the best average for an algorithm
         Input: times: list, list of times (float) to average, count: int, number of solves to average
@@ -597,7 +597,7 @@ class StatsCard(DashboardCard):
     # times: list, list of times (float) to average (list for multiple values)
     # count: int, number of solves to average (int for window size)
     # Returns: float or None (current average or None if not enough times)
-    def _calculate_current_average(self, times: list, count: int) -> float | None:
+    def _calculate_current_average(self, times: list, count: int):
         """
         Function: Calculate the current average of the last 5 solves
         Input: times: list, list of times (float) to average, count: int, number of solves to average
@@ -856,7 +856,7 @@ class Dashboard:
     
     # algorithm_name: str or None, selected algorithm name (str for search, None for reset)
     # Returns: None
-    def on_algorithm_select(self, algorithm_name: str | None) -> None:
+    def on_algorithm_select(self, algorithm_name: str):
         """
         Function: Handle selecting the algorithm from the algorithm list
         Input: algorithm_name (str) for search, None for reset

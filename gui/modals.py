@@ -171,9 +171,12 @@ class AddAlgorithmModal:
         tags_raw = self.tags_entry.get().strip()
         
         if not name or not notation:
-            self.message_var.set("Name and notation are required.")
+            self.message_var.set("Name and notation are required")
             return
-        
+        # Limit algorithm name to 32 chars
+        if len(name) > 32:
+            self.message_var.set("Algorithm name must be maximum 32 characters")
+            return
         if not self._validate_notation():
             self.message_var.set("Invalid notation. Must use U, D, L, R, F, B with modifiers 2 and/or ' (separated by spaces)")
             return
@@ -187,6 +190,17 @@ class AddAlgorithmModal:
         
         # Parse tags
         tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
+        
+        # Limit to 10 tags
+        if len(tags) > 10:
+            self.message_var.set("Maximum 10 tags allowed.")
+            return
+        
+        # Check tag length (max 16 characters each)
+        for tag in tags:
+            if len(tag) > 16:
+                self.message_var.set("Each tag must be 16 characters or less.")
+                return
         
         # Convert notation to uppercase for consistency
         notation_uppercase = ' '.join(move.upper() for move in notation.split())
