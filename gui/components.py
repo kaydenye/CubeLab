@@ -138,16 +138,19 @@ class AlgorithmListItem(ctk.CTkFrame):
     # on_click: function or None, callback for click (function for event)
     # show_remove: bool, show remove button (bool for UI)
     # on_remove: function or None, callback for remove (function for event)
+    # show_edit: bool, show edit button (bool for UI)
+    # on_edit: function or None, callback for edit (function for event)
     # show_count: bool, show count label (bool for UI)
     # count: int, number of times (int for display)
     # **kwargs: dict, extra options for CTkFrame
     # Returns: None
     def __init__(self, parent, name, on_click=None, 
                  show_remove=True, on_remove=None,
+                 show_edit=True, on_edit=None,
                  show_count=False, count=0, **kwargs):
         """
         Function: Initialise an algorithm list item component
-        Input: parent (CTk widget), name (str), on_click (callback), show_remove (bool), on_remove (callback), show_count (bool), count (int), **kwargs
+        Input: parent (CTk widget), name (str), on_click (callback), show_remove (bool), on_remove (callback), show_edit (bool), on_edit (callback), show_count (bool), count (int), **kwargs
         Outputs: None
         """
         super().__init__(parent, **kwargs)
@@ -167,13 +170,25 @@ class AlgorithmListItem(ctk.CTkFrame):
         if show_remove and on_remove:
             remove_button = ctk.CTkButton(
                 self,
-                text="Remove",
+                text="X",
                 fg_color="red",
-                hover_color="#aa0000",
-                width=80,
+                hover_color="#bc2626",
+                width=30,
                 command=lambda: on_remove(name),
             )
-            remove_button.pack(side="right")
+            remove_button.pack(side="right", padx=(5, 0))
+        
+        if show_edit and on_edit:
+            edit_button = ctk.CTkButton(
+                self,
+                text="Edit",
+                fg_color="#4A90E2",
+                hover_color="#357ABD",
+                width=60,
+                command=lambda: on_edit(name),
+            )
+            remove_padding = (5, 0) if show_remove else (5, 5)
+            edit_button.pack(side="right", padx=remove_padding)
 
 class HeaderFrame(ctk.CTkFrame):
     

@@ -8,20 +8,22 @@ from classes.timer_util import TimerUtil
 from .components import SearchBar, FilterButton, AlgorithmListItem, FONT
 from classes.timer_util import TimerUtil, TimerUtil
 from .components import SearchBar, FilterButton, AlgorithmListItem, FONT
+from .modals import AddAlgorithmModal, EditAlgorithmModal
 
 class AlgorithmList(ctk.CTkFrame):    
     # parent: CTk widget, parent container for list (CTk widget for UI)
     # on_algorithm_select: function or None, callback for selection (function for event)
     # show_remove: bool, show remove button (bool for UI)
+    # show_edit: bool, show edit button (bool for UI)
     # show_add: bool, show add button (bool for UI)
     # show_count: bool, show count label (bool for UI)
     # Returns: None
     def __init__(self, parent, on_algorithm_select=None, 
-                 show_remove=True, show_add=True,
+                 show_remove=True, show_edit=True, show_add=True,
                  show_count=False):
         """
         Function: Initialise the algorithm list component
-        Input: parent (CTk widget), on_algorithm_select (callback), show_remove (bool), show_add (bool), show_count (bool), **kwargs
+        Input: parent (CTk widget), on_algorithm_select (callback), show_remove (bool), show_edit (bool), show_add (bool), show_count (bool), **kwargs
         Outputs: None
         """
         super().__init__(parent, width=360)
@@ -30,6 +32,7 @@ class AlgorithmList(ctk.CTkFrame):
         self.timer_util = TimerUtil()
         self.on_algorithm_select = on_algorithm_select
         self.show_remove = show_remove
+        self.show_edit = show_edit
         self.show_add = show_add
         self.show_count = show_count
         
@@ -114,6 +117,8 @@ class AlgorithmList(ctk.CTkFrame):
                 on_click=self._on_algorithm_click,
                 show_remove=self.show_remove,
                 on_remove=self._on_algorithm_remove,
+                show_edit=self.show_edit,
+                on_edit=self._on_algorithm_edit,
                 show_count=self.show_count,
                 count=count
             )
@@ -148,6 +153,31 @@ class AlgorithmList(ctk.CTkFrame):
         if self.algorithm.remove_algorithm(name):
             self.refresh()
 
+    # name: str, algorithm name (str for editing)
+    # Returns: None
+    def _on_algorithm_edit(self, name):
+        """
+        Function: Handle algorithm editing
+        Input: name (str)
+        Outputs: None (opens edit modal)
+        """
+        edit_modal = EditAlgorithmModal(
+            self,
+            name,
+            on_success=self._on_modal_success
+        )
+        edit_modal.show()
+
+    def _on_modal_success(self, message):
+        """
+        Function: Handle successful modal operations (add/edit)
+        Input: message (str)
+        Outputs: None (refreshes list and shows message)
+        """
+        self.refresh()
+        # You could add a status message display here if needed
+        print(message)  # For now, print to console
+
     def _on_add_click(self):
         """
         Function: Internal add button click
@@ -161,6 +191,14 @@ class AlgorithmList(ctk.CTkFrame):
         """
         Function: Handle add button click
         Input: None
+        Outputs: None
+        """
+        pass
+
+    def on_edit_click(self, name):
+        """
+        Function: Handle edit button click
+        Input: name (str)
         Outputs: None
         """
         pass

@@ -849,6 +849,7 @@ class Dashboard:
             main_content,
             on_algorithm_select=self.on_algorithm_select,
             show_remove=False,
+            show_edit=False,
             show_add=False,
             show_count=True
         )

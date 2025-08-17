@@ -214,6 +214,61 @@ class Algorithm:
         except Exception:
             return False
     
+    def update_algorithm(self, original_name: str, new_name: str, new_notation: str, new_tags: list) -> bool:
+        """
+        Function: Update an existing algorithm with new details
+        Input: original_name (str), new_name (str), new_notation (str), new_tags (list)
+        Outputs: True if updated successfully, false otherwise
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get the algorithm ID
+                cursor.execute("SELECT id FROM algorithms WHERE name = ?", (original_name,))
+                result = cursor.fetchone()
+                if not result:
+                    return False
+                
+                algorithm_id = result[0]
+                
+                # Update algorithm name and notation
+                cursor.execute(
+                    "UPDATE algorithms SET name = ?, notation = ? WHERE id = ?",
+                    (new_name, new_notation, algorithm_id)
+                )
+                
+                # Remove existing tag associations
+                cursor.execute("DELETE FROM algorithm_tags WHERE algorithm_id = ?", (algorithm_id,))
+                
+                # Add new tags
+                for tag_name in new_tags:
+                    # Check if tag exists, if not create it
+                    cursor.execute("SELECT id FROM tags WHERE name = ?", (tag_name,))
+                    tag_row = cursor.fetchone()
+                    
+                    if tag_row:
+                        tag_id = tag_row[0]
+                    else:
+                        # Create new tag
+                        cursor.execute("INSERT INTO tags (name) VALUES (?)", (tag_name,))
+                        tag_id = cursor.lastrowid
+                    
+                    # Link algorithm to tag
+                    cursor.execute(
+                        "INSERT INTO algorithm_tags (algorithm_id, tag_id) VALUES (?, ?)",
+                        (algorithm_id, tag_id)
+                    )
+                
+                conn.commit()
+                
+                # Clean up any tags that are no longer used
+                self.cleanup_unused_tags()
+                
+                return True
+        except Exception:
+            return False
+    
     # Returns: list of str, all tag names
     # Data Source: cubelab.db, table: tags
     def get_all_tags(self) -> list:
