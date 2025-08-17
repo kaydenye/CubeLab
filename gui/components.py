@@ -307,7 +307,7 @@ class HeaderFrame(ctk.CTkFrame):
             dashboard_button.place(relx=0.0, rely=0.5, anchor="w", x=20)
         
         if show_back and on_back:
-            back_button = ctk.CTkButton(self, text="← Back", width=140, command=on_back)
+            back_button = ctk.CTkButton(self, text="Back", width=140, command=on_back)
             # Position back button based on whether dashboard button is shown
             back_x = 160 if (show_dashboard and on_dashboard) else 20
             back_button.place(relx=0.0, rely=0.5, anchor="w", x=back_x)
