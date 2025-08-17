@@ -121,14 +121,15 @@ class TagsCard(DashboardCard):
                     row = 0
                     col = 0
                     for i, tag in enumerate(tags):
-                        tag_button = ctk.CTkButton(
+                        tag_frame = ctk.CTkButton(
                             self.tags_frame, 
                             text=tag, 
                             width=max(80, len(tag) * 10),
                             height=30,
-                            font=(FONT, 12)
+                            font=(FONT, 12),
+                            fg_color="#4A5568",
                         )
-                        tag_button.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+                        tag_frame.grid(row=row, column=col, padx=5, pady=5, sticky="w")
                         
                         col += 1
                         if col > 2: # 3 columns max

@@ -155,6 +155,9 @@ class AlgorithmListItem(ctk.CTkFrame):
         """
         super().__init__(parent, **kwargs)
         
+        self.remove_button = None
+        self.edit_button = None
+        
         self.name_label = ctk.CTkLabel(self, text=name, cursor="hand2")
         self.name_label.pack(side="left", padx=(5, 10), pady=10)
         
@@ -168,7 +171,7 @@ class AlgorithmListItem(ctk.CTkFrame):
             count_label.pack(side="right", padx=(0, 10))
         
         if show_remove and on_remove:
-            remove_button = ctk.CTkButton(
+            self.remove_button = ctk.CTkButton(
                 self,
                 text="X",
                 fg_color="red",
@@ -176,10 +179,11 @@ class AlgorithmListItem(ctk.CTkFrame):
                 width=30,
                 command=lambda: on_remove(name),
             )
-            remove_button.pack(side="right", padx=(5, 0))
+            self.remove_button.pack(side="right", padx=(5, 10))
+            self.remove_button.pack_forget()  # Hide initially
         
         if show_edit and on_edit:
-            edit_button = ctk.CTkButton(
+            self.edit_button = ctk.CTkButton(
                 self,
                 text="Edit",
                 fg_color="#4A90E2",
@@ -188,7 +192,85 @@ class AlgorithmListItem(ctk.CTkFrame):
                 command=lambda: on_edit(name),
             )
             remove_padding = (5, 0) if show_remove else (5, 5)
-            edit_button.pack(side="right", padx=remove_padding)
+            self.edit_button.pack(side="right", padx=remove_padding)
+            self.edit_button.pack_forget()  # Hide initially
+        
+        # Bind hover events
+        self._setup_hover_events()
+        
+        # Bind hover events to buttons after they're created
+        if self.remove_button:
+            self.remove_button.bind("<Enter>", self._button_enter)
+            self.remove_button.bind("<Leave>", self._button_leave)
+        if self.edit_button:
+            self.edit_button.bind("<Enter>", self._button_enter)
+            self.edit_button.bind("<Leave>", self._button_leave)
+    
+    def _setup_hover_events(self):
+        """Setup hover events to show/hide buttons"""
+        def on_enter(event):
+            # Hide buttons on other algorithm items when entering this one
+            self._hide_other_buttons()
+            
+            if self.remove_button:
+                self.remove_button.pack(side="right", padx=(5, 10))
+            if self.edit_button:
+                remove_padding = (5, 0) if self.remove_button else (5, 5)
+                self.edit_button.pack(side="right", padx=remove_padding)
+        
+        def on_leave(event):
+            # Use a shorter delay for more responsive hiding
+            self.after(50, self._check_mouse_position)
+        
+        # Bind to frame and label
+        self.bind("<Enter>", on_enter)
+        self.bind("<Leave>", on_leave)
+        self.name_label.bind("<Enter>", on_enter)
+        self.name_label.bind("<Leave>", on_leave)
+        
+        # Store the event handlers for buttons (to be bound when buttons are created)
+        self._button_enter = on_enter
+        self._button_leave = on_leave
+    
+    def _hide_other_buttons(self):
+        """Hide buttons on other algorithm items in the same parent"""
+        try:
+            # Find the parent that contains all algorithm items
+            parent = self.master
+            if parent:
+                for child in parent.winfo_children():
+                    if isinstance(child, AlgorithmListItem) and child != self:
+                        if hasattr(child, 'edit_button') and child.edit_button:
+                            child.edit_button.pack_forget()
+                        if hasattr(child, 'remove_button') and child.remove_button:
+                            child.remove_button.pack_forget()
+        except:
+            pass
+    
+    def _check_mouse_position(self):
+        """Check if mouse is still within the algorithm item area (including buttons)"""
+        try:
+            # Get mouse position relative to this widget
+            x = self.winfo_pointerx() - self.winfo_rootx()
+            y = self.winfo_pointery() - self.winfo_rooty()
+            
+            # More strict bounds checking - add small margin for better UX
+            margin = 5
+            if (-margin <= x <= self.winfo_width() + margin and 
+                -margin <= y <= self.winfo_height() + margin):
+                return  # Mouse is still within bounds, don't hide buttons
+            
+            # Mouse has left the area, hide buttons
+            if self.edit_button:
+                self.edit_button.pack_forget()
+            if self.remove_button:
+                self.remove_button.pack_forget()
+        except:
+            # If there's any error (widget destroyed, etc.), just hide buttons
+            if self.edit_button:
+                self.edit_button.pack_forget()
+            if self.remove_button:
+                self.remove_button.pack_forget()
 
 class HeaderFrame(ctk.CTkFrame):
     

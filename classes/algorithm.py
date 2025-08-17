@@ -109,7 +109,7 @@ class Algorithm:
         Outputs: Sorted list
         """
         if low is None or high is None:
-            # Initial call: make a copy and sort the whole array
+            # Make a copy and sort the whole array
             arr = array.copy()
             return self._quicksort(arr, 0, len(arr) - 1)
         if low < high:
