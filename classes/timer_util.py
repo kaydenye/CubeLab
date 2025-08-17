@@ -48,9 +48,9 @@ class TimerUtil:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cur = conn.cursor()
+                cursor = conn.cursor()
                 
-                cur.execute("""
+                cursor.execute("""
                     SELECT 
                         CASE 
                             WHEN COALESCE(t.plus_two, 0) = 1 THEN t.time_seconds + 2.0
@@ -62,7 +62,7 @@ class TimerUtil:
                     WHERE a.name = ? AND COALESCE(t.dnf, 0) = 0
                     ORDER BY t.timestamp DESC
                 """, (algorithm_name,))
-                return cur.fetchall()
+                return cursor.fetchall()
         except Exception as e:
             print(f"Error getting algorithm times: {e}")
             return []
@@ -77,13 +77,13 @@ class TimerUtil:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cur = conn.cursor()
-                cur.execute("""
+                cursor = conn.cursor()
+                cursor.execute("""
                     SELECT COUNT(*) FROM times t
                     JOIN algorithms a ON t.algorithm_id = a.id
                     WHERE a.name = ?
                 """, (algorithm_name,))
-                return cur.fetchone()[0]
+                return cursor.fetchone()[0]
         except Exception:
             return 0
     
@@ -116,9 +116,9 @@ class TimerUtil:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cur = conn.cursor()
+                cursor = conn.cursor()
                 
-                cur.execute("""
+                cursor.execute("""
                     SELECT t.id, t.time_seconds, t.timestamp, 
                            COALESCE(t.plus_two, 0), COALESCE(t.dnf, 0)
                     FROM times t
@@ -126,7 +126,7 @@ class TimerUtil:
                     WHERE a.name = ?
                     ORDER BY t.timestamp DESC
                 """, (algorithm_name,))
-                return cur.fetchall()
+                return cursor.fetchall()
         except Exception as e:
             print(f"Error getting times with IDs: {e}")
             return []
@@ -143,7 +143,7 @@ class TimerUtil:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cur = conn.cursor()
+                cursor = conn.cursor()
 
                 updates = []
                 params = []
@@ -159,9 +159,9 @@ class TimerUtil:
                 if updates:
                     params.append(time_id)
                     query = f"UPDATE times SET {', '.join(updates)} WHERE id = ?"
-                    cur.execute(query, params)
+                    cursor.execute(query, params)
                     conn.commit()
-                    return cur.rowcount > 0
+                    return cursor.rowcount > 0
                 return False
         except Exception as e:
             print(f"Error updating time penalty: {e}")
@@ -177,10 +177,10 @@ class TimerUtil:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM times WHERE id = ?", (time_id,))
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM times WHERE id = ?", (time_id,))
                 conn.commit()
-                return cur.rowcount > 0
+                return cursor.rowcount > 0
         except Exception as e:
             print(f"Error deleting time: {e}")
             return False
